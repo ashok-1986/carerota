@@ -1,6 +1,6 @@
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
-import { TrendingUp, AlertTriangle, CheckCircle, Flame } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Flame } from 'lucide-react';
 
 interface CostBarProps {
   projectedCost: number; // in GBP

@@ -79,8 +79,8 @@ export function customAdapter(): Adapter {
       await db.delete(users).where(eq(users.id, id));
     },
 
-    async linkAccount(_accountData) {
-      // Adapter interface requires this method; body unused in CareRota
+    async linkAccount(_accountData: { provider: string; providerAccountId: string; userId?: string; access_token?: string; refresh_token?: string; expires_at?: number; }) {
+      void _accountData;
     },
 
     async createSession(sessionData) {

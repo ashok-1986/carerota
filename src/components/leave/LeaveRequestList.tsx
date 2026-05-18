@@ -42,8 +42,6 @@ export function LeaveRequestList({ onApprove, onDecline, isManager }: LeaveReque
   const [activeTab, setActiveTab] = useState("pending");
   const { data: requests = [], isLoading, isError, refetch } = useLeaveRequests();
 
-  const filtered = activeTab === "all" ? requests : requests.filter((r) => r.status === activeTab);
-
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)}>
       <TabsList className="mb-4">

@@ -13,7 +13,7 @@ const upsertPatternSchema = z.object({
   }))
 });
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   // 1. Verify session exists
   const session = await auth();
   if (!session || !session.user) {

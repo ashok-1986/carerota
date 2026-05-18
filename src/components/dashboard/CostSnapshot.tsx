@@ -2,7 +2,7 @@
 
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 

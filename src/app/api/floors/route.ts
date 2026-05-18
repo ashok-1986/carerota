@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { homeFloors } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   // 1. Verify session exists → 401 if not
   const session = await auth();
   if (!session || !session.user) {

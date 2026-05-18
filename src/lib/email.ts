@@ -117,7 +117,6 @@ export async function sendRotaPublishedEmail(
   staffEmail: string,
   staffName: string,
   shifts: { date: string; code: string | null; time: string; floor: string }[],
-  _homeId: string,
 ) {
   const html = rotaPublishedHtml({ staffName, shifts });
 

@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
 
 interface KpiCardProps {
   title: string;

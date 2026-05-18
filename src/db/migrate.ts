@@ -3,7 +3,6 @@ config({ path: ".env.local" });
 config({ path: ".env.drizzle", override: true });
 
 import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 
 const connectionString = process.env.DATENDPOINT_URL_UNPOOLED || process.env.DATABASE_URL_UNPOOLED || "";
 
@@ -13,7 +12,6 @@ if (!connectionString) {
 }
 
 const sql = neon(connectionString);
-const db = drizzle(sql);
 
 async function main() {
   console.log("Running migrations...");

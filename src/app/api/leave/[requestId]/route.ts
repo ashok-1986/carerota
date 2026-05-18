@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { staff as staffTable, homes, users } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { staff as staffTable, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { updateLeaveStatus } from '@/db/queries/leave';
 import { logAction } from '@/lib/audit';
-import { sendLeaveRequestNotification, sendLeaveApprovalEmail, sendLeaveDeclineEmail } from '@/lib/email';
+import { sendLeaveApprovalEmail, sendLeaveDeclineEmail } from '@/lib/email';
 import { z } from 'zod';
 import { blockRotaForLeave } from '@/lib/rota';
 

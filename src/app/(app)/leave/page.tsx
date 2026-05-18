@@ -8,7 +8,7 @@ import { useLeaveRequests } from "@/hooks/useLeave";
 import { CalendarDays, ClipboardList, PlusCircle, ChevronLeft, ChevronRight, Users, CalendarCheck, Clock, Ban } from "lucide-react";
 
 function SummaryStats() {
-  const { data: totalRequests, refetch: refetchTotal } = useLeaveRequests('all');
+  const { data: totalRequests } = useLeaveRequests('all');
   const { data: pendingData } = useLeaveRequests('pending');
 
   const pending = pendingData?.length ?? 0;

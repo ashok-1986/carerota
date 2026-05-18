@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --max-warnings=25",
+    "lint": "eslint . --max-warnings=0",
     "type-check": "tsc --noEmit",
     "precommit": "npm run type-check && npm run lint",
     "prepare": "husky",

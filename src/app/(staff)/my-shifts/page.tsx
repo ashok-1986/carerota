@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, ChevronRight, CalendarDays, Clock, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, MapPin } from "lucide-react";
 
 type ShiftRow = {
   id: string;

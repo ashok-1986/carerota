@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfMonth, endOfMonth, getDay, isSameMonth, isSameDay, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, isSameMonth, isSameDay, parseISO } from "date-fns";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
