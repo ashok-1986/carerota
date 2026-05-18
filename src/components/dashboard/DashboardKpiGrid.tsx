@@ -3,13 +3,12 @@
 import { motion } from "framer-motion";
 import { staggerContainer, listItem } from "@/lib/animations";
 import { DashboardKpiCard } from "./DashboardKpiCard";
-import { LucideIcon } from "lucide-react";
 
 export type KpiItem = {
   title: string;
   value: string;
   subtitle: string;
-  icon: LucideIcon;
+  iconName: "users" | "calendar" | "clock" | "alert-triangle";
   color: "midnight" | "teal" | "gold" | "warn" | "danger" | "slate";
 };
 
@@ -28,10 +27,10 @@ export function DashboardKpiGrid({ items }: DashboardKpiGridProps) {
       {items.map((item) => (
         <motion.div key={item.title} variants={listItem}>
           <DashboardKpiCard
+            iconName={item.iconName}
             title={item.title}
             value={item.value}
             subtitle={item.subtitle}
-            icon={item.icon}
             color={item.color}
           />
         </motion.div>

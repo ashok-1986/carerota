@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { staff, leaveRequests, rotaEntries, homes, shiftCodes } from "@/db/schema";
 import { eq, and, count, sql } from "drizzle-orm";
 import { getPayPeriod } from "@/lib/utils";
-import { Users, Calendar, Clock, AlertTriangle } from "lucide-react";
 import { DashboardKpiGrid, type KpiItem } from "@/components/dashboard/DashboardKpiGrid";
 import { CostSnapshot } from "@/components/dashboard/CostSnapshot";
 import Link from "next/link";
@@ -62,28 +61,28 @@ export default async function DashboardPage() {
       title: "Active Staff",
       value: activeStaffCount.toString(),
       subtitle: `${allStaffForHome.filter(s => s.employmentType === 'bank').length} bank workers`,
-      icon: Users,
+      iconName: "users",
       color: "midnight",
     },
     {
       title: "Rota Status",
       value: isPublished ? "Published" : "Draft",
       subtitle: payPeriod.label,
-      icon: Calendar,
+      iconName: "calendar",
       color: isPublished ? "teal" : "warn",
     },
     {
       title: "Pending Leave",
       value: pendingLeaveCount.toString(),
       subtitle: "awaiting approval",
-      icon: Clock,
+      iconName: "clock",
       color: pendingLeaveCount > 0 ? "gold" : "slate",
     },
     {
       title: "Compliance Alerts",
       value: "0",
       subtitle: "0 critical",
-      icon: AlertTriangle,
+      iconName: "alert-triangle",
       color: "slate",
     },
   ];

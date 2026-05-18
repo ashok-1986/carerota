@@ -1,15 +1,22 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
+import { Users, Calendar, Clock, AlertTriangle } from "lucide-react";
 
-interface KpiCardProps {
+type KpiCardProps = {
+  iconName: "users" | "calendar" | "clock" | "alert-triangle";
   title: string;
   value: string;
   subtitle: string;
-  icon: LucideIcon;
   color: "midnight" | "teal" | "gold" | "warn" | "danger" | "slate";
-}
+};
+
+const ICON_MAP = {
+  "users": Users,
+  "calendar": Calendar,
+  "clock": Clock,
+  "alert-triangle": AlertTriangle,
+} as const;
 
 const colorMap = {
   midnight: "text-midnight",
@@ -29,7 +36,8 @@ const iconBgMap = {
   slate: "bg-slate/10",
 };
 
-export function DashboardKpiCard({ title, value, subtitle, icon: Icon, color }: KpiCardProps) {
+export function DashboardKpiCard({ iconName, title, value, subtitle, color }: KpiCardProps) {
+  const Icon = ICON_MAP[iconName];
   return (
     <div className="bg-white border border-slate/20 shadow-sm rounded-lg p-5 flex items-start gap-4">
       <div className={cn("p-3 rounded-lg shrink-0", iconBgMap[color])}>
