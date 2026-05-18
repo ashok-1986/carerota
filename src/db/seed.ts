@@ -1,63 +1,110 @@
-import { db } from "@/lib/db";
-import { homes, homeFloors, staff, shiftCodes, rotaEntries, auditLog, leaveRequests } from "./schema";
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config({ path: ".env.drizzle" });
+
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import * as schema from "./schema";
+
+const connectionString = process.env.DATABASE_URL || '';
+if (!connectionString) {
+  console.error("DATABASE_URL is not set");
+  process.exit(1);
+}
+
+const sql = neon(connectionString);
+const db = drizzle(sql, { schema });
 
 async function main() {
   console.log("Seeding database...");
 
-  // Delete existing data (reverse order of dependencies)
-  await db.delete(auditLog);
-  await db.delete(rotaEntries);
-  await db.delete(leaveRequests);
-  await db.delete(staff);
-  await db.delete(homeFloors);
-  await db.delete(shiftCodes);
-  await db.delete(homes);
+  await db.delete(schema.auditLog);
+  await db.delete(schema.rotaEntries);
+  await db.delete(schema.leaveRequests);
+  await db.delete(schema.staff);
+  await db.delete(schema.homeFloors);
+  await db.delete(schema.shiftCodes);
+  await db.delete(schema.homes);
 
-  // Insert homes
-  const [home] = await db.insert(homes).values({
+  const [home] = await db.insert(schema.homes).values({
     name: "Marlborough Court",
     payrollStartDay: 19,
     budgetCapMonthly: "33500.00"
   }).returning();
 
-  // Insert floors
-  const insertedFloors = await db.insert(homeFloors).values([
+  const insertedFloors = await db.insert(schema.homeFloors).values([
     { homeId: home.id, name: "Kings", code: "Kg", floorType: "care_floor", sortOrder: 1 },
     { homeId: home.id, name: "Upton / Jenkins", code: "Uj", floorType: "care_floor", sortOrder: 2 },
     { homeId: home.id, name: "The Thames", code: "Th", floorType: "care_floor", sortOrder: 3 },
   ]).returning();
 
-  // Insert shift codes
-  const insertedShiftCodes = await db.insert(shiftCodes).values([
-    { code: "LD", label: "Long Day", hours: "12.00", category: "work", floors: ["care_floor"] },
-    { code: "N", label: "Night", hours: "12.00", category: "work", floors: ["care_floor"] },
-    { code: "E", label: "Early", hours: "6.00", category: "work", floors: ["care_floor"] },
-    { code: "L", label: "Late", hours: "6.00", category: "work", floors: ["care_floor"] },
-    { code: "RO", label: "Requested Off", hours: "0.00", category: "absence", floors: ["all"] },
-    { code: "AL", label: "Annual Leave", hours: "0.00", category: "absence", floors: ["all"] },
-    { code: "S", label: "Sick", hours: "0.00", category: "absence", floors: ["all"] },
+  const insertedShiftCodes = await db.insert(schema.shiftCodes).values([
+    { code: "LD", label: "Long Day", hours: "11.5", category: "work", floors: ["care", "all"] },
+    { code: "E", label: "Early", hours: "8", category: "work", floors: ["care", "all"] },
+    { code: "L", label: "Late", hours: "8", category: "work", floors: ["care", "all"] },
+    { code: "N", label: "Night", hours: "11.5", category: "work", floors: ["care", "all"] },
+    { code: "RO", label: "Rest of Day", hours: "0", category: "work", floors: ["care", "all"] },
+    { code: "AL", label: "Annual Leave", hours: "0", category: "absence", floors: ["all"] },
+    { code: "ML", label: "Mat Leave", hours: "0", category: "absence", floors: ["all"] },
+    { code: "SL", label: "Sick Leave", hours: "0", category: "absence", floors: ["all"] },
+    { code: "PL", label: "Paternity Leave", hours: "0", category: "absence", floors: ["all"] },
+    { code: "HO", label: "Home Office", hours: "8", category: "work", floors: ["ancillary", "all"] },
+    { code: "TR", label: "Training", hours: "8", category: "work", floors: ["all"] },
+    { code: "M", label: "Meeting", hours: "2", category: "work", floors: ["all"] },
+    { code: "OOH", label: "Out of Hours", hours: "4", category: "work", floors: ["ancillary"] },
   ]).returning();
 
-  // Insert staff (around 20)
-  const roles = ['HCA', 'Senior HCA', 'Nurse', 'Team Leader'];
-  const employmentTypes = ['full_time', 'part_time', 'bank'];
-  const staffToInsert = Array.from({ length: 20 }).map((_, i) => ({
-    homeId: home.id,
-    homeFloorId: insertedFloors[i % insertedFloors.length].id,
-    name: `Staff Member ${i + 1}`,
-    role: roles[i % roles.length],
-    employmentType: employmentTypes[i % employmentTypes.length],
-    contractedHours: (employmentTypes[i % employmentTypes.length] !== 'bank') ? "36.00" : null,
-    payRateHourly: "11.50",
-    isActive: true
-  }));
+  const insertedStaff = await db.insert(schema.staff).values([
+    { homeId: home.id, homeFloorId: insertedFloors[0].id, name: "Sarah Johnson", role: "home_manager", employmentType: "full_time", contractedHours: "36.00", payRateHourly: "18.00", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[0].id, name: "Emily Davis", role: "caregiver", employmentType: "full_time", contractedHours: "36.00", payRateHourly: "14.50", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[0].id, name: "Michael Brown", role: "caregiver", employmentType: "full_time", contractedHours: "36.00", payRateHourly: "14.50", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[1].id, name: "Jessica Wilson", role: "caregiver", employmentType: "part_time", contractedHours: "24.00", payRateHourly: "14.50", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[1].id, name: "David Taylor", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "15.00", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[1].id, name: "Rachel Martinez", role: "senior_caregiver", employmentType: "full_time", contractedHours: "36.00", payRateHourly: "16.00", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[2].id, name: "James Anderson", role: "caregiver", employmentType: "full_time", contractedHours: "36.00", payRateHourly: "14.50", isActive: true },
+    { homeId: home.id, homeFloorId: insertedFloors[2].id, name: "Emma Thompson", role: "caregiver", employmentType: "part_time", contractedHours: "24.00", payRateHourly: "14.50", isActive: true },
+  ]).returning();
 
-  await db.insert(staff).values(staffToInsert).returning();
+  const today = new Date();
+  const entriesToInsert = [];
+  for (const member of insertedStaff) {
+    for (let i = 1; i <= 28; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dow = d.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isBank = member.employmentType === "bank";
+
+      if (isWeekend || isBank) continue;
+
+      const patternDay = dow === 0 ? 7 : dow;
+      let codeIndex = (patternDay + insertedStaff.indexOf(member)) % 3;
+      if (codeIndex === 0) codeIndex = 2;
+
+      entriesToInsert.push({
+        homeId: home.id,
+        staffId: member.id,
+        homeFloorId: member.homeFloorId!,
+        shiftDate: d.toISOString().split("T")[0],
+        shiftCodeId: insertedShiftCodes[codeIndex].id,
+        rotaMonth: new Date(today.getFullYear(), today.getMonth(), 19).toISOString().split("T")[0],
+        isPublished: true,
+        createdBy: insertedStaff[0].id,
+      });
+    }
+  }
+
+  if (entriesToInsert.length > 0) {
+    for (const e of entriesToInsert) {
+      await db.insert(schema.rotaEntries).values(e);
+    }
+  }
 
   console.log("Database seeded successfully!");
+  process.exit(0);
 }
 
-main().catch((err) => {
-  console.error("Error seeding database:", err);
+main().catch((e) => {
+  console.error("Error seeding database:", e.message);
   process.exit(1);
 });

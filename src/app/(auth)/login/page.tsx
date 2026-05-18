@@ -2,89 +2,123 @@
 
 import { useState, useCallback } from "react";
 import { signIn } from "next-auth/react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Mail, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Mail, ArrowRight, Loader2, CheckCircle } from "lucide-react";
+
+const emailSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+type EmailFormData = z.infer<typeof emailSchema>;
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [error, setError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [sentEmail, setSentEmail] = useState("");
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+  });
+
+  const onSubmit = useCallback(async (data: EmailFormData) => {
     setStatus("sending");
-    setError("");
+    setErrorMsg("");
 
     try {
-      await signIn("resend", { email, redirect: false });
+      await signIn("resend", { email: data.email, redirect: false });
+      setSentEmail(data.email);
       setStatus("sent");
     } catch {
-      setError("Failed to send magic link. Please try again.");
+      setErrorMsg("Failed to send magic link. Please try again.");
       setStatus("error");
     }
-  }, [email]);
+  }, []);
 
   if (status === "sent") {
     return (
-      <div className="text-center space-y-4">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
-          <CheckCircle className="size-7 text-teal" />
+      <div className="bg-white rounded-xl shadow-sm border border-slate/20 p-8">
+        <div className="text-center space-y-4">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-teal/10">
+            <CheckCircle className="size-7 text-teal" />
+          </div>
+          <h2 className="text-xl font-bold text-midnight">Check your email</h2>
+          <p className="text-sm text-slate">
+            A magic sign-in link has been sent to{" "}
+            <strong className="text-midnight font-medium">{sentEmail}</strong>.
+          </p>
+          <p className="text-xs text-slate/60">
+            Click the link in the email to sign in. Check your spam folder if you don&apos;t see it.
+          </p>
         </div>
-        <h2 className="text-xl font-bold text-midnight font-display">Check your email</h2>
-        <p className="text-sm text-slate">
-          A magic sign-in link has been sent to <strong className="text-midnight">{email}</strong>.
-        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-1">
-        <h2 className="text-lg font-bold text-midnight font-display">Sign in</h2>
-        <p className="text-sm text-slate">Enter your email to receive a magic link</p>
+    <div className="bg-white rounded-xl shadow-sm border border-slate/20 p-8">
+      <div className="space-y-1 mb-6">
+        <h2 className="text-2xl font-bold text-midnight">Welcome back</h2>
+        <p className="text-sm text-slate">Sign in to your account</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="relative">
-          <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate" />
-          <input
-            type="email"
-            placeholder="you@example.com"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className={cn(
-              "w-full rounded-lg border border-slate/20 bg-white py-3 pl-10 pr-4 text-sm text-midnight placeholder:text-slate/50",
-              "focus:border-midnight focus:outline-none focus:ring-1 focus:ring-midnight",
-              "transition-colors",
-            )}
-          />
+      {status === "error" && (
+        <div className="mb-5 p-3 bg-danger/10 border border-danger/20 rounded-lg flex items-center gap-2 text-danger text-sm">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="email" className="text-sm font-medium text-midnight">
+            Email address
+          </label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate" />
+            <input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              autoComplete="email"
+              className={cn(
+                "w-full rounded-lg border bg-white py-3 pl-10 pr-4 text-sm text-midnight placeholder:text-slate/50",
+                "focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold transition-colors",
+                errors.email ? "border-danger" : "border-slate/20"
+              )}
+              {...register("email")}
+            />
+          </div>
+          {errors.email && (
+            <p className="text-xs text-danger mt-1">{errors.email.message}</p>
+          )}
         </div>
 
         <button
           type="submit"
-          disabled={status === "sending" || !email}
+          disabled={status === "sending"}
           className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-lg bg-midnight px-4 py-3 text-sm font-semibold text-white",
-            "hover:bg-midnight/90 disabled:cursor-not-allowed disabled:opacity-50",
-            "transition-all",
+            "flex w-full items-center justify-center gap-2 rounded-lg bg-gold px-4 py-3 text-sm font-semibold text-midnight",
+            "hover:bg-gold/90 disabled:cursor-not-allowed disabled:opacity-50 transition-all mt-2"
           )}
         >
           {status === "sending" ? (
-            <Loader2 className="size-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            <>
-              Send Magic Link
-              <ArrowRight className="size-4" />
-            </>
+            "Send Magic Link"
           )}
         </button>
-
-        {status === "error" && (
-          <p className="text-center text-xs text-danger">{error}</p>
-        )}
       </form>
+
+      <p className="text-xs text-slate/70 text-center mt-5">
+        Staff member? Request your login link from your manager.
+      </p>
     </div>
   );
 }

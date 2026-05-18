@@ -1,7 +1,7 @@
 
 CAREROTA · TECHNICAL ARCHITECTURE
 Folder & File Architecture
-Complete project structure for rota.alchemetryx.com
+Complete project structure for panel.alchemetryx.com
 v1.0 · Alchemetryx · May 2026 · Next.js 15 App Router · TypeScript · Tailwind CSS v4
 
 How to use this document
@@ -12,7 +12,7 @@ Sections are ordered: repo root → config files → source structure → databa
 
  
 1. Repository Root
-Fresh Next.js 15 repo initialised at rota.alchemetryx.com. All files below live at the root unless indicated.
+Fresh Next.js 15 repo initialised at panel.alchemetryx.com. All files below live at the root unless indicated.
 
 1.1 Root-level files
 File	Purpose	Notes
@@ -35,7 +35,7 @@ drizzle.config.ts	Database ORM configuration.	Points to Neon PostgreSQL. eu-west
 .env.local — all required keys
 # Auth.js v5
 AUTH_SECRET=                          # 32-char random string. npx auth secret
-AUTH_URL=https://rota.alchemetryx.com
+AUTH_URL=https://panel.alchemetryx.com
 
 # Database — Neon PostgreSQL (eu-west-2)
 DATABASE_URL=                         # Neon connection string (pooled)
@@ -46,7 +46,7 @@ RESEND_API_KEY=                       # For magic links and leave notifications
 RESEND_FROM_EMAIL=noreply@alchemetryx.com
 
 # App
-NEXT_PUBLIC_APP_URL=https://rota.alchemetryx.com
+NEXT_PUBLIC_APP_URL=https://panel.alchemetryx.com
 NEXT_PUBLIC_APP_NAME=CareRota
 
 # Optional — Analytics (Vercel Analytics, no third-party)
@@ -89,7 +89,7 @@ const config: NextConfig = {
   },
   experimental: {
     typedRoutes: true,      // Type-safe Link href
-    serverActions: { allowedOrigins: ['rota.alchemetryx.com'] },
+    serverActions: { allowedOrigins: ['panel.alchemetryx.com'] },
   },
 }
 
@@ -630,7 +630,7 @@ __tests__/
 
 7. Deployment
 Config	Value	Notes
-Domain	rota.alchemetryx.com	Vercel custom domain. SSL auto-configured.
+Domain	panel.alchemetryx.com	Vercel custom domain. SSL auto-configured.
 Vercel region	lhr1 (London)	UK data residency requirement. Set in vercel.json.
 Database region	eu-west-2 (Ireland)	Neon PostgreSQL. Closest to lhr1.
 Branch → environment	main → production, dev → preview	Vercel auto-deploys on push.

@@ -4,7 +4,7 @@
 CareRota is a care home operations platform for UK residential care groups.
 Pilot client: Gold Care Homes. Pilot site: Marlborough Court Care Home.
 Primary user: Maribel Pascual (Home Manager, 2-3 decades tenure).
-Production URL: rota.alchemetryx.com
+Production URL: panel.alchemetryx.com
 
 ## The problem we are solving
 Maribel builds a 125-person monthly rota in Excel (3-4 hrs/month).

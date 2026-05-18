@@ -30,7 +30,7 @@ Create BRAND.md	Paste brand section from MVP PRD (Section 7.2 and 7.3)	File exis
 Create SKILLS.md	Paste skills reference from UX/UI prompt document	File exists at root
 Configure tailwind.config.ts	Add all brand tokens (midnight, pearl, gold, amethyst, teal, slate + fonts)	Tailwind classes work in browser
 Create vercel.json	Set region: lhr1. Add security headers.	File exists at root
-Deploy to Vercel	Connect GitHub repo. Set env vars. Deploy.	rota.alchemetryx.com loads
+Deploy to Vercel	Connect GitHub repo. Set env vars. Deploy.	panel.alchemetryx.com loads
 
 Sprint 0.2 — Database (Day 2)
 Task	File	Done when
