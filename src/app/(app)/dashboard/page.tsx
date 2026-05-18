@@ -4,11 +4,9 @@ import { staff, leaveRequests, rotaEntries, homes, shiftCodes } from "@/db/schem
 import { eq, and, count, sql } from "drizzle-orm";
 import { getPayPeriod } from "@/lib/utils";
 import { Users, Calendar, Clock, AlertTriangle } from "lucide-react";
-import { DashboardKpiCard } from "@/components/dashboard/DashboardKpiCard";
+import { DashboardKpiGrid, type KpiItem } from "@/components/dashboard/DashboardKpiGrid";
 import { CostSnapshot } from "@/components/dashboard/CostSnapshot";
 import Link from "next/link";
-import { staggerContainer, listItem } from "@/lib/animations";
-import { motion } from "framer-motion";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -59,6 +57,37 @@ export default async function DashboardPage() {
   `);
   const projectedCost = Number(projectedCostResult.rows[0]?.total ?? 0);
 
+  const kpiItems: KpiItem[] = [
+    {
+      title: "Active Staff",
+      value: activeStaffCount.toString(),
+      subtitle: `${allStaffForHome.filter(s => s.employmentType === 'bank').length} bank workers`,
+      icon: Users,
+      color: "midnight",
+    },
+    {
+      title: "Rota Status",
+      value: isPublished ? "Published" : "Draft",
+      subtitle: payPeriod.label,
+      icon: Calendar,
+      color: isPublished ? "teal" : "warn",
+    },
+    {
+      title: "Pending Leave",
+      value: pendingLeaveCount.toString(),
+      subtitle: "awaiting approval",
+      icon: Clock,
+      color: pendingLeaveCount > 0 ? "gold" : "slate",
+    },
+    {
+      title: "Compliance Alerts",
+      value: "0",
+      subtitle: "0 critical",
+      icon: AlertTriangle,
+      color: "slate",
+    },
+  ];
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       <div>
@@ -68,52 +97,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
-      >
-        <motion.div variants={listItem}>
-          <DashboardKpiCard
-            title="Active Staff"
-            value={activeStaffCount.toString()}
-            subtitle={`${allStaffForHome.filter(s => s.employmentType === 'bank').length} bank workers`}
-            icon={Users}
-            color="midnight"
-          />
-        </motion.div>
-
-        <motion.div variants={listItem}>
-          <DashboardKpiCard
-            title="Rota Status"
-            value={isPublished ? "Published" : "Draft"}
-            subtitle={payPeriod.label}
-            icon={Calendar}
-            color={isPublished ? "teal" : "warn"}
-          />
-        </motion.div>
-
-        <motion.div variants={listItem}>
-          <DashboardKpiCard
-            title="Pending Leave"
-            value={pendingLeaveCount.toString()}
-            subtitle="awaiting approval"
-            icon={Clock}
-            color={pendingLeaveCount > 0 ? "gold" : "slate"}
-          />
-        </motion.div>
-
-        <motion.div variants={listItem}>
-          <DashboardKpiCard
-            title="Compliance Alerts"
-            value="0"
-            subtitle="0 critical"
-            icon={AlertTriangle}
-            color="slate"
-          />
-        </motion.div>
-      </motion.div>
+      <DashboardKpiGrid items={kpiItems} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">

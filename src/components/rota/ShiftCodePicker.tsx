@@ -1,3 +1,5 @@
+'use client';
+
 import { SHIFT_CODES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
