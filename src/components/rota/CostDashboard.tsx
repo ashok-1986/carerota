@@ -3,9 +3,7 @@ import { cn } from '@/lib/utils';
 import { 
   BarChart3, 
   Coins, 
-  Clock, 
-  Percent, 
-  HelpCircle,
+  Clock,
   Users,
   ChevronDown,
   ChevronUp,
@@ -30,7 +28,6 @@ export function CostDashboard({
   budgetedHours,
   isOverBudget,
   variance,
-  status
 }: CostDashboardProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -58,7 +55,7 @@ export function CostDashboard({
     return { bg: 'bg-slate/5 text-slate', text: 'slate', label: role };
   };
 
-  const totalRoleCost = roles.reduce((sum, [_, amt]) => sum + amt, 0);
+  const totalRoleCost = roles.reduce((sum, [, amt]) => sum + amt, 0);
 
   return (
     <div className="bg-white border border-slate/15 rounded-xl shadow-sm transition-all overflow-hidden">

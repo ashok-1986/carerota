@@ -203,7 +203,7 @@ export async function applyPatternsToPeriod(
     const start = new Date(startDate);
     const end = new Date(endDate);
     const dates: Date[] = [];
-    let current = new Date(start);
+    const current = new Date(start);
     while (current <= end) {
       dates.push(new Date(current));
       current.setDate(current.getDate() + 1);

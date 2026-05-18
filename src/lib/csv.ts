@@ -1,6 +1,9 @@
 import { SHIFT_CODES } from '@/lib/constants';
 import { format, parseISO } from 'date-fns';
 
+type PayrollStaffRow = { id: string; name: string; role: string; payRateHourly: number | null; homeFloorId: string | null };
+type PayrollFloorRow = { id: number | string; name: string; code?: string };
+
 export interface ExportRow {
   staffName: string;
   careRotaRef: string;
@@ -16,30 +19,41 @@ export interface ExportRow {
   category: string;
 }
 
+type PayrollEntry = {
+  id?: string | number;
+  staffId: string | number;
+  shiftDate: Date | string;
+  shiftCodeId?: string | null;
+  code?: string | null;
+  shiftCodeCode?: string | null;
+  actualFloorId?: string | number | null;
+  homeFloorId?: string | number | null;
+};
+
 /**
  * Generates rows formatted for Softworks-compatible HR and Payroll systems
  */
 export function generatePayrollRows(
-  entries: any[],
-  staffList: any[],
-  floors: any[]
+  entries: PayrollEntry[],
+  staffList: PayrollStaffRow[],
+  floors: PayrollFloorRow[]
 ): ExportRow[] {
   const rows: ExportRow[] = [];
 
   // Group staff and floors for O(1) lookup
-  const staffMap = new Map<string, any>();
+  const staffMap = new Map<string, PayrollStaffRow>();
   staffList.forEach((s) => staffMap.set(s.id, s));
 
-  const floorMap = new Map<string, any>();
-  floors.forEach((f) => floorMap.set(f.id, f));
+  const floorMap = new Map<string, PayrollFloorRow>();
+  floors.forEach((f) => floorMap.set(f.id.toString(), f));
 
   entries.forEach((entry) => {
-    const staff = staffMap.get(entry.staffId);
+    const staff = staffMap.get(entry.staffId.toString());
     if (!staff) return;
 
     // Use actual floor if shifted, fallback to home floor
-    const targetFloorId = entry.actualFloorId || entry.homeFloorId || staff.homeFloorId;
-    const floor = floorMap.get(targetFloorId);
+    const targetFloorId = entry.actualFloorId?.toString() || entry.homeFloorId?.toString() || staff.homeFloorId;
+    const floor = floorMap.get(targetFloorId?.toString() || '');
 
     // Resolve shift code details
     // entry might have shiftCodeId, or code.
@@ -57,11 +71,13 @@ export function generatePayrollRows(
     const projectedPayGbp = hourlyRateGbp * hours;
 
     // Format date as DD/MM/YYYY using date-fns format(parseISO(dateStr), 'dd/MM/yyyy')
-    let formattedDate = entry.shiftDate;
+    let formattedDate: string;
     if (typeof entry.shiftDate === 'string') {
       formattedDate = format(parseISO(entry.shiftDate), 'dd/MM/yyyy');
     } else if (entry.shiftDate instanceof Date) {
       formattedDate = format(entry.shiftDate, 'dd/MM/yyyy');
+    } else {
+      formattedDate = '';
     }
 
     rows.push({
@@ -112,7 +128,7 @@ export function convertToCsv(rows: ExportRow[]): string {
     'Shift Category',
   ];
 
-  const escapeCsvField = (field: any): string => {
+  const escapeCsvField = (field: unknown): string => {
     if (field === null || field === undefined) return '';
     const str = String(field);
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {

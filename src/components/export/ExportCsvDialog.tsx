@@ -19,7 +19,7 @@ interface ExportCsvDialogProps {
   onClose: () => void;
   startDate: string;
   endDate: string;
-  floors: any[];
+  floors: Array<{ id: string; name: string; code?: string }>;
   activeFloorId?: string;
 }
 
@@ -59,7 +59,7 @@ export function ExportCsvDialog({
 
       toast.success('Softworks payroll CSV generated successfully!');
       onClose();
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to export payroll data');
     } finally {
       setIsExporting(false);

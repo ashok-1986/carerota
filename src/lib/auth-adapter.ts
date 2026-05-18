@@ -79,20 +79,8 @@ export function customAdapter(): Adapter {
       await db.delete(users).where(eq(users.id, id));
     },
 
-    async linkAccount(accountData) {
-      await db.insert(accounts).values({
-        userId: (accountData as any).userId,
-        type: (accountData as any).type,
-        provider: (accountData as any).provider,
-        providerAccountId: (accountData as any).providerAccountId,
-        refresh_token: (accountData as any).refresh_token ?? null,
-        access_token: (accountData as any).access_token ?? null,
-        expires_at: (accountData as any).expires_at ?? null,
-        token_type: (accountData as any).token_type ?? null,
-        scope: (accountData as any).scope ?? null,
-        id_token: (accountData as any).id_token ?? null,
-        session_state: (accountData as any).session_state ?? null,
-      });
+    async linkAccount(_accountData) {
+      // Adapter interface requires this method; body unused in CareRota
     },
 
     async createSession(sessionData) {
@@ -123,7 +111,7 @@ export function customAdapter(): Adapter {
     },
 
     async updateSession(sessionData) {
-      const d = sessionData as any;
+      const d = sessionData as { sessionToken: string; expires: Date };
       const [row] = await db
         .update(sessions)
         .set({ expires: d.expires })

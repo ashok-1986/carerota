@@ -72,7 +72,7 @@ export default function RotaPage() {
     
     setIsFillingPatterns(true);
     try {
-      const payload: any = {
+      const payload: { startDate: string; endDate: string; floorId?: string } = {
         startDate: startDateStr,
         endDate: endDateStr,
       };
@@ -94,8 +94,8 @@ export default function RotaPage() {
       // Invalidate query caching to reload all entries inside grid dynamically
       await queryClient.invalidateQueries({ queryKey: ['rota'] });
       toast.success('Monthly rota successfully pre-populated from repeating patterns!');
-    } catch (err: any) {
-      toast.error(`Failed to apply templates: ${err.message}`);
+    } catch (err) {
+      toast.error(`Failed to apply templates: ${(err as Error).message}`);
     } finally {
       setIsFillingPatterns(false);
     }
@@ -126,18 +126,20 @@ export default function RotaPage() {
   };
 
   // Convert raw API response entries/staff into useCost hook types
-  const costEntries = (data?.entries || []).map((e: any) => {
+  type CostEntry = { code?: string; staffId: string; shiftDate: string; isPublished?: boolean };
+  type CostStaff = { id: string; role: string; name: string; employmentType?: string; contractedHours?: number; payRateHourly?: number };
+  const costEntries = (data?.entries || []).map((e: CostEntry) => {
     const shiftCodeInfo = SHIFT_CODES.find((sc) => sc.code === e.code);
     return {
       staffId: e.staffId,
       shiftCode: e.code || '',
       shiftDate: e.shiftDate,
       hours: shiftCodeInfo?.hours || 0,
-      category: (shiftCodeInfo?.category as any) || 'work',
+      category: shiftCodeInfo?.category || 'work',
     };
   });
 
-  const costStaff = (data?.sections || []).flatMap((sec: any) => sec.staff).map((s: any) => ({
+  const costStaff = (data?.sections || []).flatMap((sec: { staff: CostStaff[] }) => sec.staff).map((s: CostStaff) => ({
     id: s.id,
     role: s.role,
     name: s.name,
@@ -153,7 +155,7 @@ export default function RotaPage() {
 
   // Compute draft status based on loaded entries
   const isDraft = data?.entries && data.entries.length > 0 
-    ? data.entries.some((e: any) => !e.isPublished) 
+    ? data.entries.some((e: CostEntry) => !e.isPublished) 
     : true;
 
   const activeFloorName = floors.find(f => f.id === activeFloorId)?.name || 'Care Home';

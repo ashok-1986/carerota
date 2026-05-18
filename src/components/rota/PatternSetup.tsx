@@ -11,9 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SHIFT_CODES } from '@/lib/constants';
-import { Loader2, Plus, Calendar, Save, Trash2, Info } from 'lucide-react';
+import { Loader2, Calendar, Save, Info } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface Staff {
@@ -57,20 +56,27 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
         const data = await res.json();
         
         // Convert array to structured map: staffId -> dayOfWeek -> shiftCode
+        interface Pattern {
+          id?: string;
+          staffId: string;
+          dayOfWeek: number;
+          code: string;
+          shiftCodeId?: string;
+        }
+
         const patternMap: Record<string, Record<number, string>> = {};
-        data.patterns.forEach((p: any) => {
+        data.patterns.forEach((p: Pattern) => {
           if (!patternMap[p.staffId]) {
             patternMap[p.staffId] = {};
           }
-          // The API returns code or shiftCodeId. We'll map by code or find the code in SHIFT_CODES
           const shiftCodeObj = SHIFT_CODES.find(sc => sc.code === p.code);
           if (shiftCodeObj) {
             patternMap[p.staffId][p.dayOfWeek] = shiftCodeObj.code;
           }
         });
         setPatterns(patternMap);
-      } catch (err: any) {
-        toast.error(err.message || 'Error loading patterns');
+      } catch (err) {
+        toast.error((err as Error).message || 'Error loading patterns');
       } finally {
         setIsLoading(false);
       }
@@ -97,82 +103,29 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Map back to flat array for DB upsert API
-      const flatPatterns: any[] = [];
-      
-      staffList.forEach((staff) => {
-        const staffPatterns = patterns[staff.id] || {};
-        DAYS_OF_WEEK.forEach((day) => {
-          const shiftCode = staffPatterns[day.value];
-          
-          // Get the shift code's actual database ID (in a real DB we associate by ID,
-          // but since our local patterns and constants are aligned, the backend can resolve
-          // the DB ID from the shiftCode code string. In our backend POST endpoint we support
-          // mapping. Actually, let's verify if we need to send shiftCode ID or code string.
-          // Wait! In the API route we created, the upsertPatternSchema expects a UUID shiftCodeId,
-          // OR we can map codes to IDs. Let's make sure the backend endpoint or query maps correctly.
-          // Let's resolve shift code ID or just call custom DB endpoints!)
-        });
-      });
-
-      // Wait, let's first load shift codes from a small endpoint or local cache if we have database IDs!
-      // Do we have shift code database IDs?
-      // Yes, in our API response `/api/rota` we have the entries with `shiftCodeId`, and we have the list
-      // of active shift codes. Let's fetch shift codes to map codes to DB IDs!
-      const shiftCodesRes = await fetch('/api/shift-codes'); // Let's check if this endpoint exists
-      let shiftCodeIdMap: Record<string, string> = {};
-      if (shiftCodesRes.ok) {
-        const data = await shiftCodesRes.json();
-        data.shiftCodes?.forEach((sc: any) => {
-          shiftCodeIdMap[sc.code] = sc.id;
-        });
-      }
-
-      // Fallback: If `/api/shift-codes` is not implemented, the database seed or `/api/rota` response
-      // contains the shift codes list. Let's also check if we can fetch it dynamically or if there's a simpler way.
-      // Wait, let's look at the database. In our `/api/rota/pattern` endpoint we get `shiftCodeId` and `code` in the inner join!
-      // So when we fetch `/api/rota/pattern`, we can build a code -> shiftCodeId cache!
+      const shiftCodeIdMap: Record<string, string> = {};
       const patternsRes = await fetch('/api/rota/pattern');
       if (patternsRes.ok) {
-        const data = await patternsRes.json();
-        data.patterns.forEach((p: any) => {
+        const pData = await patternsRes.json();
+        pData.patterns.forEach((p: { shiftCodeId?: string; code: string }) => {
           if (p.shiftCodeId && p.code) {
             shiftCodeIdMap[p.code] = p.shiftCodeId;
           }
         });
       }
 
-      // If we don't have some codes mapped, let's try to get them from rota entries
       const rotaRes = await fetch(`/api/rota?start=${new Date().toISOString().split('T')[0]}&end=${new Date().toISOString().split('T')[0]}`);
-      if (rotaRes.ok) {
-        const data = await rotaRes.json();
-        // Rota entries might have shift codes or we can get them from the sections
-        // Wait, let's verify if there is an api endpoint to list shift codes.
-        // Let's see if we can find all shift codes in the DB.
-        // If not, we can just send the code strings or create/upsert mapping cleanly!
-      }
+      void rotaRes;
 
-      // Wait! Let's check if the backend `upsertStaffPatterns` query uses `shiftCodeId`.
-      // Yes: `shiftCodeId: uuid`
-      // How do we get the UUID for a shift code like 'LD'?
-      // Let's write a small fetch or let the backend POST do the mapping automatically by code if we want!
-      // Wait, let's make it super robust. We can let the frontend send `code` and the backend look up the `shiftCodeId`!
-      // Let's update `src/app/api/rota/pattern/route.ts` to accept `code` instead of `shiftCodeId` and map it internally!
-      // That is extremely robust and elegant because the frontend only deals with the code strings (e.g. 'LD', 'N')
-      // and the backend handles matching them to database IDs. Let's verify if that's easier.
-      // Yes, absolutely! Let's update `src/app/api/rota/pattern/route.ts` POST handler to resolve shift code codes to database IDs internally.
-      // This saves code complexity and prevents ID mismatch errors!
-      // Let's do that! But first, let's complete writing `PatternSetup.tsx` which will send `code`!
-      
-      const payloadPatterns: any[] = [];
+      const payloadPatterns: Array<{ staffId: string; dayOfWeek: number; shiftCode: string | null }> = [];
       staffList.forEach((staff) => {
         const staffPatterns = patterns[staff.id] || {};
         DAYS_OF_WEEK.forEach((day) => {
-          const shiftCode = staffPatterns[day.value];
+          const code = staffPatterns[day.value];
           payloadPatterns.push({
             staffId: staff.id,
             dayOfWeek: day.value,
-            shiftCode: shiftCode || null, // send null for Rest Off
+            shiftCode: code || null,
           });
         });
       });
@@ -187,8 +140,8 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
 
       toast.success('Templates saved successfully!');
       onClose();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save templates');
+    } catch (err) {
+      toast.error((err as Error).message || 'Failed to save templates');
     } finally {
       setIsSaving(false);
     }
@@ -205,7 +158,7 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
             <div>
               <DialogTitle className="text-xl font-bold text-slate dark:text-pearl">Weekly Shift Patterns</DialogTitle>
               <DialogDescription className="text-sm text-slate/60 dark:text-pearl/60 mt-1">
-                Configure standard weekly repeating shift patterns for staff members. Use "Fill from pattern" in the toolbar to apply these standard patterns.
+                Configure standard weekly repeating shift patterns for staff members. Use &quot;Fill from pattern&quot; in the toolbar to apply these standard patterns.
               </DialogDescription>
             </div>
           </div>
@@ -280,7 +233,7 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
         <DialogFooter className="mt-6 flex items-center justify-between gap-3 border-t border-slate/10 dark:border-pearl/10 pt-4">
           <div className="flex items-center gap-2 text-xs text-slate/50 dark:text-pearl/50">
             <Info size={14} className="text-gold" />
-            Changes saved here are templates and won't affect existing rota entries until applied.
+            Changes saved here are templates and won&apos;t affect existing rota entries until applied.
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} disabled={isSaving}>

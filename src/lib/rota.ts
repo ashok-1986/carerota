@@ -18,7 +18,7 @@ export interface ShiftCode {
   code: string;
   label: string;
   hours: string | number;
-  category: 'work' | 'absence';
+  category: 'work' | 'absence' | 'float';
 }
 
 export interface Staff {
@@ -33,7 +33,7 @@ export interface Staff {
 export interface RotaEntry {
   id: string;
   staffId: string;
-  shiftDate: string;
+  shiftDate: string | Date;
   shiftCodeId: string | null;
   homeFloorId: string;
 }
@@ -122,7 +122,10 @@ export function detectComplianceIssues(
     const staffEntries = entries.filter((e) => e.staffId === staff.id && e.shiftCodeId);
     const entryByDate = new Map<string, string>(); // date -> shiftCodeId
     staffEntries.forEach((e) => {
-      if (e.shiftCodeId) entryByDate.set(e.shiftDate, e.shiftCodeId);
+      if (e.shiftCodeId) {
+        const dateKey = typeof e.shiftDate === 'string' ? e.shiftDate : (e.shiftDate instanceof Date ? e.shiftDate.toISOString().split('T')[0] : '');
+        entryByDate.set(dateKey, e.shiftCodeId);
+      }
     });
 
     // 2. Check Contracted Hours

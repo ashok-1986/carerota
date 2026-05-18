@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, MouseEvent } from 'react';
+import { useState, useEffect, useRef, MouseEvent } from 'react';
 import { format } from 'date-fns';
 import { RotaCell } from './RotaCell';
 import { SectionHeader } from './SectionHeader';
@@ -48,13 +48,16 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
 
   const [cellData, setCellData] = useState<Record<string, string>>({});
   const { mutate: bulkUpdate } = useBulkUpdateCells();
+  
+  // Keep track of the last mouse position for popover positioning
+  const lastMousePosRef = useRef({ top: 0, left: 0 });
 
   // Map backend entries to local state
   useEffect(() => {
     const nextData: Record<string, string> = {};
     initialEntries.forEach(entry => {
       const key = `${entry.staffId}_${entry.shiftDate}`;
-      nextData[key] = entry.shiftCodeId; // We assume shiftCodeId is the short code for now
+      nextData[key] = entry.shiftCodeId;
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCellData(nextData);
@@ -66,13 +69,10 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
       setPickerState({
         isOpen: true,
         selectedCells: cells.map(c => ({ staffId: c.staffId, dateStr: c.shiftDate })),
-        position: lastMousePos
+        position: lastMousePosRef.current
       });
     }
   });
-
-  // Keep track of the last mouse position for popover positioning
-  const [lastMousePos, setLastMousePos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -94,10 +94,10 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     }
 
     const rect = e.currentTarget.getBoundingClientRect();
-    setLastMousePos({ 
+    lastMousePosRef.current = { 
       top: rect.bottom + window.scrollY + 8, 
       left: Math.max(10, rect.left + window.scrollX - 100) 
-    });
+    };
 
     startDrag(staffId, dateStr);
   };
@@ -105,10 +105,10 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
   const handleMouseEnter = (e: MouseEvent, staffId: string, dateStr: string) => {
     if (dragState.isDragging) {
       const rect = e.currentTarget.getBoundingClientRect();
-      setLastMousePos({ 
+      lastMousePosRef.current = { 
         top: rect.bottom + window.scrollY + 8, 
         left: Math.max(10, rect.left + window.scrollX - 100) 
-      });
+      };
       onDragOver(staffId, dateStr);
     }
   };

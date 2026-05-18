@@ -11,18 +11,28 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { detectGaps, detectComplianceIssues, CoverageGap, ComplianceIssue } from '@/lib/rota';
+import { detectGaps, detectComplianceIssues } from '@/lib/rota';
+import { staff } from '@/db/schema';
 import { SHIFT_CODES } from '@/lib/constants';
-import { AlertTriangle, CheckCircle, ShieldAlert, ShieldCheck, Loader2, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface FloorInfo {
+  id: string;
+  name: string;
+  homeId?: string;
+  code?: string;
+  floorType?: string;
+  sortOrder?: number;
+}
 
 interface PublishReviewProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirmPublish: () => void;
-  entries: any[];
-  staffList: any[];
-  floors: any[];
+  entries: Array<{ id: string; staffId: string; shiftDate: Date | string; shiftCodeId: string; homeFloorId: string; code?: string }>;
+  staffList: typeof staff.$inferSelect[];
+  floors: FloorInfo[];
   dates: string[];
   isPublishing: boolean;
 }
@@ -40,15 +50,6 @@ export function PublishReview({
   const [acknowledged, setAcknowledged] = useState(false);
 
   // 1. Run validation rules
-  // Convert frontend entries & staff lists to lib types
-  const typedEntries = entries.map((e) => ({
-    id: e.id,
-    staffId: e.staffId,
-    shiftDate: e.shiftDate,
-    shiftCodeId: e.shiftCodeId,
-    homeFloorId: e.homeFloorId,
-  }));
-
   const typedStaffList = staffList.map((s) => ({
     id: s.id,
     name: s.name,
@@ -58,17 +59,15 @@ export function PublishReview({
     homeFloorId: s.homeFloorId,
   }));
 
-  const typedShiftCodes = SHIFT_CODES.map((sc, idx) => ({
+  const typedShiftCodes = SHIFT_CODES.map((sc) => ({
     id: sc.code, // use code as ID for lookups in this validation context since it matches the code
     code: sc.code,
     label: sc.label,
     hours: sc.hours,
-    category: sc.category as any,
+    category: sc.category,
   }));
 
-  // Resolve shift codes matching code strings for validation
   const mappedEntries = entries.map((e) => {
-    // entry code is in e.code or e.shiftCodeCode
     const code = e.code || SHIFT_CODES.find((sc) => sc.code === e.code)?.code;
     return {
       id: e.id,

@@ -12,7 +12,6 @@ export function getPayPeriod(startDay: number = 19, referenceDate: Date = new Da
   const currentMonthStart = setDate(today, startDay);
   
   let start: Date;
-  let end: Date;
   
   if (isBefore(today, currentMonthStart)) {
     start = setDate(subMonths(today, 1), startDay);
@@ -21,7 +20,7 @@ export function getPayPeriod(startDay: number = 19, referenceDate: Date = new Da
   }
   
   // setDate with 0 goes to last day of previous month, which correctly handles startDay = 1
-  end = setDate(addMonths(start, 1), startDay - 1);
+  const end = setDate(addMonths(start, 1), startDay - 1);
   
   const days = eachDayOfInterval({ start, end });
   const label = `${format(start, 'd MMM')} — ${format(end, 'd MMM yyyy')}`;

@@ -42,7 +42,8 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
 
 export const handlers = nextAuthHandlers;
 
-export const auth = async (...args: any[]) => {
+export const auth = async (...args: unknown[]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const session = await (baseAuth as any)(...args);
   if (session) return session;
 

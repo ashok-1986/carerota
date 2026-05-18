@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { leaveRequestSchema } from "@/lib/validations";
@@ -19,8 +18,10 @@ import {
 } from "@/components/ui/select";
 import { LeaveBalance } from "./LeaveBalance";
 import { toast } from "sonner";
-import { Calendar, User, FileText, AlertTriangle } from "lucide-react";
+import { Calendar, User, FileText } from "lucide-react";
 import { z } from "zod";
+import { leaveTypeEnum } from "@/lib/validations";
+import type { z as ZodType } from "zod";
 
 type FormValues = z.infer<typeof leaveRequestSchema>;
 
@@ -52,7 +53,7 @@ export function LeaveRequestForm({ fixedStaffId, onSuccess, isManager = true }: 
     },
   });
 
-  const selectedStaffId = watch("staffId");
+  const _selectedStaffId = watch("staffId");
   const leaveType = watch("leaveType");
 
   const onSubmit = async (values: FormValues) => {
@@ -79,9 +80,9 @@ export function LeaveRequestForm({ fixedStaffId, onSuccess, isManager = true }: 
         notes: "",
       });
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      toast.error(error.message || "Failed to submit leave request");
+      toast.error((error as Error).message || "Failed to submit leave request");
     }
   };
 
@@ -105,7 +106,7 @@ export function LeaveRequestForm({ fixedStaffId, onSuccess, isManager = true }: 
                 <div className="h-8 w-full animate-pulse rounded-lg bg-slate/10" />
               ) : (
                 <Select
-                  value={selectedStaffId}
+                  value={_selectedStaffId}
                   onValueChange={(val) => setValue("staffId", val as string, { shouldValidate: true })}
                 >
                   <SelectTrigger className="w-full h-8 text-sm">
@@ -135,7 +136,7 @@ export function LeaveRequestForm({ fixedStaffId, onSuccess, isManager = true }: 
           </Label>
           <Select
             value={leaveType}
-            onValueChange={(val) => setValue("leaveType", (val || "AL") as any, { shouldValidate: true })}
+            onValueChange={(val) => setValue("leaveType", (val || "AL") as ZodType.infer<typeof leaveTypeEnum>, { shouldValidate: true })}
           >
             <SelectTrigger className="w-full h-8 text-sm">
               <SelectValue />
@@ -211,8 +212,8 @@ export function LeaveRequestForm({ fixedStaffId, onSuccess, isManager = true }: 
 
       {/* Dynamic Interactive Leave Balance Display */}
       <div className="flex flex-col justify-start">
-        {selectedStaffId ? (
-          <LeaveBalance staffId={selectedStaffId} />
+        {_selectedStaffId ? (
+          <LeaveBalance staffId={_selectedStaffId} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-6 border-2 border-dashed border-slate/20 rounded-lg bg-white">
             <User className="h-10 w-10 text-slate/30 mb-3" />

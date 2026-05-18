@@ -72,8 +72,8 @@ export function LeaveCalendar({ month }: LeaveCalendarProps) {
 
   const weeks: Date[][] = [];
   let currentWeek: Date[] = [];
-  let cursor = new Date(firstMonday);
-
+  const cursor = new Date(firstMonday);
+  
   for (let i = 0; i < 42; i++) {
     currentWeek.push(new Date(cursor));
     if (currentWeek.length === 7) {
