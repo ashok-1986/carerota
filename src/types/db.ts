@@ -33,3 +33,17 @@ export type NewLeaveRequest = InferInsertModel<typeof leaveRequests>;
 
 export type AuditLog = InferSelectModel<typeof auditLog>;
 export type NewAuditLog = InferInsertModel<typeof auditLog>;
+
+export type StaffRow = {
+  id: string;
+  name: string;
+  role: string;
+  employmentType: string;
+  contractedHours: number | null;
+  payRateHourly: number | null;
+  authUserId: string | null;
+  isActive: boolean;
+  homeFloorId: string | null;
+  floorName: string | null;
+  floorCode: string | null;
+};

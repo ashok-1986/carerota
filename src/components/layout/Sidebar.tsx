@@ -35,7 +35,7 @@ export function Sidebar({ currentPath = '/dashboard' }: SidebarProps) {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href as any}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg font-sans font-medium transition-all duration-200",
                 isActive 

@@ -22,7 +22,7 @@ export function PageHeader({ title, description, breadcrumbs, action }: PageHead
             {breadcrumbs.map((crumb, i) => (
               <div key={i} className="flex items-center">
                 {crumb.href ? (
-                  <Link href={crumb.href} className="hover:text-midnight transition-colors">
+                  <Link href={crumb.href as any} className="hover:text-midnight transition-colors">
                     {crumb.label}
                   </Link>
                 ) : (

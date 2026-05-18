@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Urbanist } from "next/font/google";
 import "./globals.css";
-
+import { QueryProvider } from "@/components/providers/QueryProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/sonner";
 const fontHeading = Cormorant_Garamond({
   variable: "--font-heading",
   subsets: ["latin"],
@@ -29,7 +31,14 @@ export default function RootLayout({
       lang="en"
       className={`${fontSans.variable} ${fontHeading.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <QueryProvider>
+          <TooltipProvider>
+            {children}
+            <Toaster />
+          </TooltipProvider>
+        </QueryProvider>
+      </body>
     </html>
   );
 }

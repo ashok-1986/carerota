@@ -32,3 +32,21 @@ export const cellHover = {
   transition: { duration: 0.12 },
 };
 
+export const listItem: Variants = {
+  hidden: { opacity: 0, x: -8 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.2, ease: "easeOut" },
+  },
+};
+
+export const slideInRight: Variants = {
+  hidden: { opacity: 0, x: 20 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.25, ease: "easeOut" },
+  },
+};
+

@@ -6,3 +6,4 @@ export * from "./shift-codes";
 export * from "./rota-entries";
 export * from "./leave-requests";
 export * from "./audit-log";
+export * from "./staff-patterns";
