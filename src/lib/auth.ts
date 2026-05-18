@@ -11,8 +11,8 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
   session: { strategy: "jwt" },
   providers: [
     Resend({
-      apiKey: process.env.RESEND_API_KEY || '',
-      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+      apiKey: process.env.RESEND_API_KEY,
+      from: process.env.RESEND_FROM_EMAIL ?? 'support@alchemetryx.com',
     }),
     Credentials({
       name: 'credentials',
