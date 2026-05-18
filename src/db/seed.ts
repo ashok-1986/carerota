@@ -18,13 +18,19 @@ const db = drizzle(sql, { schema });
 async function main() {
   console.log("Seeding database...");
 
-  await db.delete(schema.auditLog);
-  await db.delete(schema.rotaEntries);
-  await db.delete(schema.leaveRequests);
-  await db.delete(schema.staff);
-  await db.delete(schema.homeFloors);
-  await db.delete(schema.shiftCodes);
-  await db.delete(schema.homes);
+  console.log("  truncating tables...");
+  try { await sql`TRUNCATE TABLE "rota_entries" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "leave_requests" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "staff_patterns" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "staff" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "home_floors" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "shift_codes" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "account" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "session" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "verificationToken" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "user" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "homes" CASCADE`; } catch { /* ignore */ }
+  try { await sql`TRUNCATE TABLE "audit_log" CASCADE`; } catch { /* ignore */ }
 
   const [home] = await db.insert(schema.homes).values({
     name: "Marlborough Court",
