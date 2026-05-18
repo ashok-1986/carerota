@@ -22,7 +22,7 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
 
   try {
     const data = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'noreply@alchemetryx.com',
+      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
       to,
       subject,
       html,

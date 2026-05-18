@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Resend from "next-auth/providers/resend";
+import Credentials from "next-auth/providers/credentials";
 import { db } from "./db";
 import { staff, homes } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,10 +8,37 @@ import { customAdapter } from "./auth-adapter";
 
 const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut: baseSignOut } = NextAuth({
   adapter: customAdapter(),
+  session: { strategy: "jwt" },
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY || '',
-      from: process.env.RESEND_FROM_EMAIL || 'noreply@alchemetryx.com',
+      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+    }),
+    Credentials({
+      name: 'credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
+        // Hardcoded admin account for testing while email is broken
+        // Replace with DB lookup after Resend domain is verified
+        if (
+          credentials.email === process.env.ADMIN_EMAIL &&
+          credentials.password === process.env.ADMIN_PASSWORD
+        ) {
+          return {
+            id: 'admin-test',
+            email: credentials.email as string,
+            name: 'Maribel Pascual',
+            role: 'manager',
+            homeId: process.env.TEST_HOME_ID ?? '',
+          };
+        }
+        return null;
+      },
     }),
   ],
   pages: {
@@ -18,21 +46,36 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
     verifyRequest: '/verify-email',
   },
   callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as Record<string, unknown>).role as string | undefined;
+        token.homeId = (user as Record<string, unknown>).homeId as string | undefined;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user && token) {
         session.user.id = token.sub as string;
-        try {
-          const [staffRecord] = await db
-            .select()
-            .from(staff)
-            .where(eq(staff.authUserId, token.sub as string))
-            .limit(1);
-          if (staffRecord) {
-            session.user.role = staffRecord.role;
-            session.user.homeId = staffRecord.homeId;
+
+        // If credentials login already populated role/homeId via JWT, use those
+        if (token.role && token.homeId) {
+          session.user.role = token.role as string;
+          session.user.homeId = token.homeId as string;
+        } else {
+          // Otherwise look up from staff table (magic-link flow)
+          try {
+            const [staffRecord] = await db
+              .select()
+              .from(staff)
+              .where(eq(staff.authUserId, token.sub as string))
+              .limit(1);
+            if (staffRecord) {
+              session.user.role = staffRecord.role;
+              session.user.homeId = staffRecord.homeId;
+            }
+          } catch (e) {
+            console.error("Error fetching session staff details:", e);
           }
-        } catch (e) {
-          console.error("Error fetching session staff details:", e);
         }
       }
       return session;
