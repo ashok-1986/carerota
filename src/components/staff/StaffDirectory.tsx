@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { staggerContainer } from '@/lib/animations';
+import { staggerContainer, cardItem } from '@/lib/animations';
 import { StaffCard } from './StaffCard';
 import { StaffFilters } from './StaffFilters';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -132,17 +132,18 @@ export function StaffDirectory({ staff, isLoading }: StaffDirectoryProps) {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {filtered.map((s) => (
-            <StaffCard
-              key={s.id}
-              id={s.id}
-              name={s.name}
-              role={s.role}
-              employmentType={s.employmentType}
-              contractedHours={s.contractedHours}
-              payRateHourly={s.payRateHourly}
-              isActive={s.isActive}
-              floorName={s.floorName}
-            />
+            <motion.div key={s.id} variants={cardItem}>
+              <StaffCard
+                id={s.id}
+                name={s.name}
+                role={s.role}
+                employmentType={s.employmentType}
+                contractedHours={s.contractedHours}
+                payRateHourly={s.payRateHourly}
+                isActive={s.isActive}
+                floorName={s.floorName}
+              />
+            </motion.div>
           ))}
         </motion.div>
       )}

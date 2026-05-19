@@ -1,3 +1,5 @@
+"use client";
+
 import { CheckCircle2, Download, UploadCloud, Calendar, Wand2, Loader2 } from 'lucide-react';
 
 interface RotaToolbarProps {

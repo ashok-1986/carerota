@@ -1,8 +1,6 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge';
-
 import { cn } from '@/lib/utils';
 import { Clock, ShieldCheck } from 'lucide-react';
 
@@ -23,22 +21,39 @@ const employmentTypeLabel: Record<string, string> = {
   bank: 'Bank',
 };
 
-const roleBadgeVariant: Record<string, string> = {
-  'Senior Caregiver': 'default',
-  'Caregiver': 'secondary',
-  'Nurse': 'destructive',
-  'Activity Coordinator': 'outline',
-  'Housekeeping': 'ghost',
-  'Kitchen': 'ghost',
+const roleColorMap: Record<string, { bg: string; text: string }> = {
+  'Registered Nurse': { bg: 'bg-amethyst/15', text: 'text-amethyst' },
+  'Nurse': { bg: 'bg-amethyst/15', text: 'text-amethyst' },
+  'RN': { bg: 'bg-amethyst/15', text: 'text-amethyst' },
+  'Senior Caregiver': { bg: 'bg-teal/15', text: 'text-teal' },
+  'Senior Carer': { bg: 'bg-teal/15', text: 'text-teal' },
+  'Caregiver': { bg: 'bg-midnight/10', text: 'text-midnight' },
+  'Carer': { bg: 'bg-midnight/10', text: 'text-midnight' },
+  'Care Assistant': { bg: 'bg-midnight/10', text: 'text-midnight' },
+  'Activity Coordinator': { bg: 'bg-gold/10', text: 'text-amber-700' },
+  'Housekeeping': { bg: 'bg-slate/10', text: 'text-slate' },
+  'Kitchen': { bg: 'bg-slate/10', text: 'text-slate' },
+};
+
+const employmentBadge: Record<string, { bg: string; text: string }> = {
+  full_time: { bg: 'bg-teal/10', text: 'text-teal' },
+  part_time: { bg: 'bg-amethyst/10', text: 'text-amethyst' },
+  bank: { bg: 'bg-gold/10', text: 'text-amber-700' },
 };
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function getRoleColor(role: string): { bg: string; text: string } {
+  for (const [key, value] of Object.entries(roleColorMap)) {
+    if (role.toLowerCase().includes(key.toLowerCase())) return value;
+  }
+  return { bg: 'bg-slate/10', text: 'text-slate' };
+}
+
+function getEmploymentBadge(emp: string): { bg: string; text: string } {
+  return employmentBadge[emp] ?? { bg: 'bg-slate/10', text: 'text-slate' };
 }
 
 export function StaffCard({
@@ -52,7 +67,8 @@ export function StaffCard({
   floorName,
 }: StaffCardProps) {
   const initials = getInitials(name);
-  const badgeVariant = (roleBadgeVariant[role] || 'secondary') as 'default' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'link';
+  const roleColor = getRoleColor(role);
+  const empBadge = getEmploymentBadge(employmentType);
 
   return (
     <motion.div
@@ -72,14 +88,17 @@ export function StaffCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-midnight truncate">{name}</h3>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <Badge variant={badgeVariant} className="text-[10px]">
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', roleColor.bg, roleColor.text)}>
                   {role}
-                </Badge>
+                </span>
+                <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded', empBadge.bg, empBadge.text)}>
+                  {employmentTypeLabel[employmentType] ?? employmentType}
+                </span>
                 {!isActive && (
-                  <Badge variant="outline" className="text-[10px]">
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate/10 text-slate">
                     Inactive
-                  </Badge>
+                  </span>
                 )}
               </div>
             </div>
@@ -97,17 +116,15 @@ export function StaffCard({
             {floorName && (
               <div className="flex items-center gap-1.5 text-xs text-slate">
                 <ShieldCheck className="h-3 w-3 shrink-0" />
-                <span>{floorName}</span>
+                <span className="px-1.5 py-0.5 rounded bg-midnight/8 text-midnight text-[10px]">{floorName}</span>
               </div>
             )}
 
             {payRateHourly != null && payRateHourly > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-slate">
-                <span className="w-3 h-3 flex items-center justify-center">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
-                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                  </svg>
-                </span>
+              <div className="flex items-center gap-1.5 text-xs text-teal font-medium">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 shrink-0">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
                 <span>£{(payRateHourly / 100).toFixed(2)}/hr</span>
               </div>
             )}

@@ -1,13 +1,17 @@
+"use client";
+
+import { useEffect, useRef } from 'react';
+import { useMotionValue, useSpring } from 'framer-motion';
 import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle, Flame } from 'lucide-react';
 
 interface CostBarProps {
-  projectedCost: number; // in GBP
-  budgetCapGbp: number;   // in GBP
-  variance: number;       // in GBP
+  projectedCost: number;
+  budgetCapGbp: number;
+  variance: number;
   isOverBudget: boolean;
-  capUtilisation: number; // e.g. 0.85 (85%)
+  capUtilisation: number;
   status: 'safe' | 'warning' | 'danger';
   scheduledHours: number;
   budgetedHours: number;
@@ -23,38 +27,49 @@ export function CostBar({
   scheduledHours,
   budgetedHours,
 }: CostBarProps) {
-  const percentUsed = Math.min(Math.round(capUtilisation * 100), 100);
-  
   const statusColors = {
     safe: {
       bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
       bar: 'bg-emerald-500',
       icon: CheckCircle,
-      glow: 'shadow-emerald-500/20'
+      glow: 'shadow-emerald-500/20',
     },
     warning: {
       bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
       bar: 'bg-amber-500',
       icon: AlertTriangle,
-      glow: 'shadow-amber-500/20'
+      glow: 'shadow-amber-500/20',
     },
     danger: {
       bg: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
       bar: 'bg-rose-500',
       icon: Flame,
-      glow: 'shadow-rose-500/20'
-    }
+      glow: 'shadow-rose-500/20',
+    },
   };
+
+  const scaleX = useMotionValue(0);
+  const springX = useSpring(scaleX, { stiffness: 80, damping: 20 });
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    scaleX.set(Math.min(capUtilisation, 1));
+  }, [capUtilisation, scaleX]);
+
+  useEffect(() => {
+    return springX.on('change', (v) => {
+      if (barRef.current) {
+        barRef.current.style.width = `${Math.min(v * 100, 100)}%`;
+      }
+    });
+  }, [springX]);
 
   const currentStatus = statusColors[status];
   const StatusIcon = currentStatus.icon;
 
   return (
     <div className="bg-white border border-slate/15 rounded-xl p-6 shadow-sm flex flex-col gap-5 transition-all hover:shadow-md">
-      {/* Header Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        {/* Projected Cost */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-slate tracking-wide uppercase">Projected Cost</span>
           <div className="flex items-baseline gap-2">
@@ -65,7 +80,6 @@ export function CostBar({
           </div>
         </div>
 
-        {/* Budget Cap Utilisation */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-slate tracking-wide uppercase">Utilisation</span>
           <div className="flex items-center gap-2">
@@ -82,7 +96,6 @@ export function CostBar({
           </div>
         </div>
 
-        {/* Variance */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-slate tracking-wide uppercase">Variance</span>
           <div className="flex items-baseline gap-2">
@@ -98,7 +111,6 @@ export function CostBar({
           </div>
         </div>
 
-        {/* Scheduled Hours */}
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-slate tracking-wide uppercase">Scheduled Hours</span>
           <div className="flex items-baseline gap-2">
@@ -110,23 +122,21 @@ export function CostBar({
             </span>
           </div>
         </div>
-
       </div>
 
-      {/* Progress Bar Container */}
       <div className="flex flex-col gap-1.5">
         <div className="w-full h-3.5 bg-slate/10 rounded-full overflow-hidden p-0.5 border border-slate/5">
           <div
+            ref={barRef}
             className={cn(
               "h-full rounded-full transition-all duration-500 ease-out shadow-sm",
               currentStatus.bar,
               currentStatus.glow
             )}
-            style={{ width: `${percentUsed}%` }}
+            style={{ width: '0%' }}
           />
         </div>
-        
-        {/* Helper status text */}
+
         <div className="flex justify-between items-center text-xs font-medium text-slate">
           <span>0%</span>
           {isOverBudget ? (

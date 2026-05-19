@@ -1,3 +1,5 @@
+"use client";
+
 interface SectionHeaderProps {
   title: string;
   count: number;

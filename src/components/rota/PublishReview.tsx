@@ -11,8 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { detectGaps, detectComplianceIssues } from '@/lib/rota';
-import { staff } from '@/db/schema';
+import { detectGaps, detectComplianceIssues } from '@/lib/rota-client';
 import { SHIFT_CODES } from '@/lib/constants';
 import { AlertTriangle, CheckCircle, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,12 +25,21 @@ interface FloorInfo {
   sortOrder?: number;
 }
 
+interface StaffRow {
+  id: string;
+  name: string;
+  contractedHours: number | null;
+  role: string;
+  employmentType: string;
+  homeFloorId: string | null;
+}
+
 interface PublishReviewProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirmPublish: () => void;
   entries: Array<{ id: string; staffId: string; shiftDate: Date | string; shiftCodeId: string; homeFloorId: string; code?: string }>;
-  staffList: typeof staff.$inferSelect[];
+  staffList: StaffRow[];
   floors: FloorInfo[];
   dates: string[];
   isPublishing: boolean;
@@ -53,7 +61,7 @@ export function PublishReview({
   const typedStaffList = staffList.map((s) => ({
     id: s.id,
     name: s.name,
-    contractedHours: Number(s.contractedHours) || 0,
+    contractedHours: s.contractedHours != null ? Number(s.contractedHours) || 0 : null,
     role: s.role,
     employmentType: s.employmentType || 'full_time',
     homeFloorId: s.homeFloorId,

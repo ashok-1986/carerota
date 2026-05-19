@@ -23,7 +23,7 @@ function getRotaMonthDate(dateStr: string): string {
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10);
   const day = parseInt(parts[2], 10);
-  
+
   if (day >= 19) {
     const mStr = month < 10 ? `0${month}` : `${month}`;
     return `${year}-${mStr}-19`;
@@ -36,6 +36,12 @@ function getRotaMonthDate(dateStr: string): string {
 }
 
 export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }: MonthlyRotaGridProps) {
+  useEffect(() => {
+    window.onerror = (msg, src, line, col, error) => {
+      console.error('Window error on rota page:', { msg, src, line, col, error });
+    };
+  }, []);
+
   const [pickerState, setPickerState] = useState<{
     isOpen: boolean;
     selectedCells: Array<{ staffId: string; dateStr: string }>;

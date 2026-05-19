@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from 'react';
+import { useMotionValue, useSpring, motion } from 'framer-motion';
 import { cn } from "@/lib/utils";
 import { Users, Calendar, Clock, AlertTriangle } from "lucide-react";
 
@@ -36,6 +38,36 @@ const iconBgMap = {
   slate: "bg-slate/10",
 };
 
+function AnimatedValue({ value }: { value: string }) {
+  const numeric = parseFloat(value.replace(/[^0-9.-]/g, ''));
+  const isNumeric = !isNaN(numeric) && isFinite(numeric);
+
+  const motionVal = useMotionValue(0);
+  const spring = useSpring(motionVal, { stiffness: 60, damping: 12 });
+  const displayRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (isNumeric) {
+      motionVal.set(numeric);
+    }
+  }, [numeric, motionVal, isNumeric]);
+
+  useEffect(() => {
+    if (!isNumeric) return;
+    return spring.on('change', (v) => {
+      if (displayRef.current) {
+        displayRef.current.textContent = Math.round(v).toString();
+      }
+    });
+  }, [spring, isNumeric]);
+
+  if (!isNumeric) {
+    return <span>{value}</span>;
+  }
+
+  return <motion.span ref={displayRef}>0</motion.span>;
+}
+
 export function DashboardKpiCard({ iconName, title, value, subtitle, color }: KpiCardProps) {
   const Icon = ICON_MAP[iconName];
   return (
@@ -45,7 +77,9 @@ export function DashboardKpiCard({ iconName, title, value, subtitle, color }: Kp
       </div>
       <div className="min-w-0">
         <p className="text-sm text-slate font-medium">{title}</p>
-        <p className={cn("text-2xl font-bold mt-0.5", colorMap[color])}>{value}</p>
+        <p className={cn("text-2xl font-bold mt-0.5", colorMap[color])}>
+          <AnimatedValue value={value} />
+        </p>
         <p className="text-xs text-slate/70 mt-1 truncate">{subtitle}</p>
       </div>
     </div>

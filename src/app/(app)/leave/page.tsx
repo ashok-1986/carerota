@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { staggerContainer, cardItem } from "@/lib/animations";
+import { cn } from "@/lib/utils";
 import { LeaveCalendar } from "@/components/leave/LeaveCalendar";
 import { LeaveRequestList } from "@/components/leave/LeaveRequestList";
 import { LeaveRequestForm } from "@/components/leave/LeaveRequestForm";
@@ -17,29 +20,38 @@ function SummaryStats() {
   const declined = totalRequests?.filter((r) => r.status === 'declined').length ?? 0;
 
   const stats = [
-    { label: 'Pending', value: pending, icon: Clock, color: 'text-warn', bg: 'bg-warn/10' },
-    { label: 'Approved', value: approved, icon: CalendarCheck, color: 'text-teal', bg: 'bg-teal/10' },
-    { label: 'Declined', value: declined, icon: Ban, color: 'text-danger', bg: 'bg-danger/10' },
-    { label: 'Total', value: total, icon: Users, color: 'text-midnight', bg: 'bg-midnight/5' },
+    { label: 'Pending', value: pending, icon: Clock, bg: 'bg-warn/10', color: 'text-warn' },
+    { label: 'Approved', value: approved, icon: CalendarCheck, bg: 'bg-teal/10', color: 'text-teal' },
+    { label: 'Declined', value: declined, icon: Ban, bg: 'bg-danger/10', color: 'text-danger' },
+    { label: 'Total', value: total, icon: Users, bg: 'bg-midnight/10', color: 'text-midnight' },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <motion.div
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+    >
       {stats.map((s) => {
         const Icon = s.icon;
         return (
-          <div key={s.label} className="flex items-center gap-3 rounded-xl border border-slate/10 bg-white p-4 shadow-sm">
-            <div className={`flex size-10 items-center justify-center rounded-lg ${s.bg}`}>
-              <Icon className={`size-5 ${s.color}`} />
+          <motion.div
+            key={s.label}
+            variants={cardItem}
+            className="flex items-center gap-3 rounded-xl border border-slate/10 bg-white p-4 shadow-sm"
+          >
+            <div className={cn("flex size-10 items-center justify-center rounded-lg", s.bg)}>
+              <Icon className={cn("size-5", s.color)} />
             </div>
             <div>
               <p className="text-xs text-slate">{s.label}</p>
-              <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
+              <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
             </div>
-          </div>
+          </motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }
 

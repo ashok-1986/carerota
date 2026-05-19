@@ -22,6 +22,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { PatternSetup } from '@/components/rota/PatternSetup';
 import { PublishReview } from '@/components/rota/PublishReview';
 import { ExportCsvDialog } from '@/components/export/ExportCsvDialog';
+import { RotaErrorBoundary } from '@/components/shared/RotaErrorBoundary';
 
 export default function RotaPage() {
   const { data: session } = useSession();
@@ -123,13 +124,34 @@ export default function RotaPage() {
   type ApiCostStaff = { id: string; name: string; role: string; employmentType?: string; contractedHours?: number | null; payRateHourly?: number | null; homeFloorId?: string | null };
   type ApiEntry = { code?: string; staffId?: string; shiftDate?: string; hours?: number | string; category?: string; isPublished?: boolean };
 
-  const costEntries: CostEntry[] = (data?.entries || []).map((e: ApiEntry) => ({
-    shiftCode: e.code || '',
-    staffId: e.staffId || '',
-    shiftDate: e.shiftDate || '',
-    hours: typeof e.hours === 'number' ? e.hours : (parseFloat(String(e.hours || '0')) || 0),
-    category: (e.category as 'work' | 'absence' | 'float') || 'work',
-  }));
+  const shiftCodeMap: Record<string, { hours: number; category: 'work' | 'absence' | 'float' }> = {
+    LD: { hours: 12, category: 'work' },
+    N: { hours: 10, category: 'work' },
+    E: { hours: 7.5, category: 'work' },
+    L: { hours: 8, category: 'work' },
+    Su: { hours: 12, category: 'work' },
+    '1-1': { hours: 12, category: 'work' },
+    '9-5': { hours: 7.5, category: 'work' },
+    RO: { hours: 0, category: 'absence' },
+    AL: { hours: 0, category: 'absence' },
+    ML: { hours: 0, category: 'absence' },
+    Kg: { hours: 0, category: 'float' },
+    Uj: { hours: 0, category: 'float' },
+    Th: { hours: 0, category: 'float' },
+  };
+
+  const costEntries: CostEntry[] = (data?.entries || []).map((e: ApiEntry) => {
+    const code = e.code || '';
+    const shiftInfo = shiftCodeMap[code] ?? { hours: 0, category: 'work' as const };
+    const rawHours = typeof e.hours === 'number' ? e.hours : (parseFloat(String(e.hours || '0')) || 0);
+    return {
+      shiftCode: code,
+      staffId: e.staffId || '',
+      shiftDate: e.shiftDate || '',
+      hours: rawHours > 0 ? rawHours : shiftInfo.hours,
+      category: shiftInfo.category,
+    };
+  });
 
   const costStaff: import('@/types/cost').CostStaff[] = (data?.sections || []).flatMap((sec: { staff: ApiCostStaff[] }) =>
     sec.staff.map((s: ApiCostStaff) => ({
@@ -142,20 +164,17 @@ export default function RotaPage() {
     }))
   );
 
-  const patternStaffList = costStaff.map((s) => ({
-    id: s.id,
-    name: (s as ApiCostStaff).name || s.id,
-    role: s.role,
-    employmentType: s.employmentType,
-    contractedHours: (s.contractedHours as unknown as string | null) ?? null,
-    payRateHourly: (s.payRateHourly as unknown as string | null) ?? null,
-    homeId: session?.user?.homeId ?? '',
-    homeFloorId: typeof (s as ApiCostStaff).homeFloorId === 'string' ? (s as ApiCostStaff).homeFloorId : null,
-    authUserId: null,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  })) as import('@/types/db').Staff[];
+  const patternStaffList = costStaff.map((s) => {
+    const ch = typeof s.contractedHours === 'number' ? s.contractedHours : parseFloat(String(s.contractedHours || '0')) || 0;
+    return {
+      id: s.id,
+      name: (s as ApiCostStaff).name || s.id,
+      role: s.role,
+      employmentType: s.employmentType,
+      contractedHours: ch,
+      homeFloorId: (typeof (s as ApiCostStaff).homeFloorId === 'string' ? (s as ApiCostStaff).homeFloorId : null) ?? null,
+    };
+  });
 
   const budgetCapGbp = 33500;
   const costSummary = useCost(costEntries, costStaff, budgetCapGbp, payPeriod.days);
@@ -169,6 +188,7 @@ export default function RotaPage() {
   const activeFloorName = floors.find(f => f.id === activeFloorId)?.name || 'Care Home';
 
   return (
+    <RotaErrorBoundary>
     <div className="p-8 max-w-[1600px] mx-auto">
       <PageHeader
         title="Monthly Rota"
@@ -283,5 +303,6 @@ export default function RotaPage() {
         />
       )}
     </div>
+    </RotaErrorBoundary>
   );
 }
