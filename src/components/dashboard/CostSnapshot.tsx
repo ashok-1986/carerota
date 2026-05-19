@@ -38,7 +38,7 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapsho
   const barColor = isOver ? "bg-danger" : isWarning ? "bg-warn" : "bg-teal";
 
   return (
-    <div className="bg-white border border-slate/20 shadow-sm rounded-lg p-6">
+    <div className="glass-panel border border-slate/20 rounded-xl p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-base font-semibold text-midnight">Cost Snapshot</h3>

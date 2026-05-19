@@ -39,7 +39,7 @@ function SummaryStats() {
           <motion.div
             key={s.label}
             variants={cardItem}
-            className="flex items-center gap-3 rounded-xl border border-slate/10 bg-white p-4 shadow-sm"
+            className="glass-card flex items-center gap-3 rounded-xl p-4"
           >
             <div className={cn("flex size-10 items-center justify-center rounded-lg", s.bg)}>
               <Icon className={cn("size-5", s.color)} />

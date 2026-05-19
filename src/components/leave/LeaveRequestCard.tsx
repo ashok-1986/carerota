@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Check, X, Calendar } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
+import Link from "next/link";
 
 type LeaveRequestCardProps = {
   request: {
     id: string;
+    staffId?: string;
     staffName: string;
     leaveType: string;
     startDate: string;
@@ -75,7 +77,9 @@ export function LeaveRequestCard({ request, onApprove, onDecline, isManager }: L
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-bold text-midnight">{request.staffName}</span>
+          <Link href={`/staff/${request.staffId || '#'}`} className="text-sm font-bold text-midnight hover:text-gold transition-colors">
+            {request.staffName}
+          </Link>
           <Badge variant="outline" className={`text-[11px] font-medium px-2 py-0.5 ${typeStyle.className}`}>
             {typeStyle.label}
           </Badge>
