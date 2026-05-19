@@ -23,6 +23,9 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const trimmedName = (userName ?? "").trim();
+  const displayName = trimmedName !== "" ? trimmedName : "Manager";
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -62,15 +65,15 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
               aria-label="User menu"
             >
               <div className="w-9 h-9 rounded-xl bg-midnight flex items-center justify-center text-white font-bold font-sans text-xs shadow-sm">
-                {getInitials(userName)}
+                {getInitials(displayName)}
               </div>
-              <span className="hidden sm:block text-sm font-medium text-midnight">{userName.split(' ')[0]}</span>
+              <span className="hidden sm:block text-sm font-medium text-midnight">{displayName.split(' ')[0]}</span>
             </button>
-
+            
             {userMenuOpen && (
               <div className="glass-card absolute right-0 mt-2 w-52 rounded-xl overflow-hidden z-50 border border-slate/15">
                 <div className="px-4 py-3 border-b border-slate/10">
-                  <p className="text-sm font-semibold text-midnight">{userName}</p>
+                  <p className="text-sm font-semibold text-midnight">{displayName}</p>
                   <p className="text-xs text-slate mt-0.5">{userRole}</p>
                 </div>
                 <div className="py-1">
@@ -100,7 +103,7 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
         <div className="fixed inset-0 z-50 lg:block">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
           <div className="fixed inset-y-0 left-0 w-72 z-50">
-            <Sidebar homeName={homeName} userName={userName} userRole={userRole} />
+            <Sidebar homeName={homeName} userName={displayName} userRole={userRole} />
           </div>
         </div>
       )}

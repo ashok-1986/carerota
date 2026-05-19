@@ -9,14 +9,22 @@ import {
 import type { CostEntry, CostStaff } from '@/types/cost';
 import { BUDGET_WARNING_THRESHOLD } from '@/lib/constants';
 
-export function useCost(entries: CostEntry[], staff: CostStaff[], budgetCapGbp: number, payPeriodDays: Date[]) {
+export function useCost(
+  entries: CostEntry[],
+  staff: CostStaff[],
+  budgetCapGbp: number,
+  payPeriodDays: Date[],
+  additionalCostTotal = 0
+) {
   return useMemo(() => {
-    const projectedCostPence = calcProjectedCost(entries, staff);
+    const salaryCostPence = calcProjectedCost(entries, staff);
+    const additionalCostPence = Math.round(additionalCostTotal * 100);
+    const totalCostPence = salaryCostPence + additionalCostPence;
     const budgetedHours = calcBudgetedHours(staff, payPeriodDays);
     const scheduledHours = calcScheduledHours(entries);
     const costByRolePence = calcCostByRole(entries, staff);
     const budgetCapPence = budgetCapGbp * 100;
-    const capUtilisation = calcCapUtilisation(projectedCostPence, budgetCapPence);
+    const capUtilisation = calcCapUtilisation(totalCostPence, budgetCapPence);
     
     let status: 'safe' | 'warning' | 'danger' = 'safe';
     if (capUtilisation >= 1.0) {
@@ -25,10 +33,14 @@ export function useCost(entries: CostEntry[], staff: CostStaff[], budgetCapGbp: 
       status = 'warning';
     }
     
-    const variancePence = budgetCapPence - projectedCostPence;
+    const variancePence = budgetCapPence - totalCostPence;
 
     return {
-      projectedCost: projectedCostPence / 100, // Return as GBP for UI
+      salaryCost: salaryCostPence / 100,
+      additionalCostTotal: additionalCostPence / 100,
+      totalCost: totalCostPence / 100,
+      projectedCost: totalCostPence / 100, // Keep for backward compat — now equals totalCost
+      projectedSalaryCost: salaryCostPence / 100,
       budgetedHours,
       scheduledHours,
       capUtilisation,
@@ -39,5 +51,5 @@ export function useCost(entries: CostEntry[], staff: CostStaff[], budgetCapGbp: 
       ),
       status
     };
-  }, [entries, staff, budgetCapGbp, payPeriodDays]);
+  }, [entries, staff, budgetCapGbp, payPeriodDays, additionalCostTotal]);
 }

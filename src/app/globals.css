@@ -159,3 +159,11 @@
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow: 0 4px 24px rgba(26, 38, 66, 0.08);
 }
+
+.glass-sidebar {
+  background: rgba(26, 38, 66, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 4px 0 32px rgba(26, 38, 66, 0.2);
+}

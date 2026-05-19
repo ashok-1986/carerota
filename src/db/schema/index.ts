@@ -7,3 +7,4 @@ export * from "./rota-entries";
 export * from "./leave-requests";
 export * from "./audit-log";
 export * from "./staff-patterns";
+export * from "./additional-costs";

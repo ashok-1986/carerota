@@ -9,9 +9,11 @@ interface CostSnapshotProps {
   projectedCost: number;
   budgetCap: number;
   homeName: string;
+  salaryCost?: number;
+  additionalCostTotal?: number;
 }
 
-export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapshotProps) {
+export function CostSnapshot({ projectedCost, budgetCap, homeName, salaryCost = 0, additionalCostTotal = 0 }: CostSnapshotProps) {
   const hasData = projectedCost > 0;
 
   if (!hasData) {
@@ -37,6 +39,7 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapsho
 
   const statusBg = isOver ? "bg-danger/10 text-danger border-danger/20" : isWarning ? "bg-warn/10 text-warn border-warn/20" : "bg-teal/10 text-teal border-teal/20";
   const StatusIcon = isOver ? Flame : isWarning ? AlertTriangle : CheckCircle;
+  const status = isOver ? 'over' : isWarning ? 'warning' : 'healthy';
 
   return (
     <div className="glass-card rounded-2xl p-6 border border-slate/15">
@@ -58,10 +61,15 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapsho
 
       <div className="grid grid-cols-3 gap-5 mb-5">
         <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
-          <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Projected Cost</p>
+          <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Total Cost</p>
           <p className={cn("text-xl font-display font-bold tracking-tight", isOver ? "text-danger" : "text-midnight")}>
             {formatCurrency(projectedCost)}
           </p>
+          {additionalCostTotal > 0 && (
+            <p className="text-[9px] text-slate/50 mt-1">
+              {formatCurrency(salaryCost)} salary + {formatCurrency(additionalCostTotal)} additional
+            </p>
+          )}
         </div>
         <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
           <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Budget Cap</p>
@@ -75,6 +83,12 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapsho
           <p className="text-[10px] text-slate/60 mt-1">{isOver ? "over budget" : "under budget"}</p>
         </div>
       </div>
+
+      {additionalCostTotal > 0 && (
+        <div className="mb-3 px-4 py-2 rounded-lg bg-gold/5 border border-gold/20 text-xs text-slate">
+          Additional Costs: <span className="font-semibold text-midnight">{formatCurrency(additionalCostTotal)}</span>
+        </div>
+      )}
 
       <div className="space-y-2.5">
         <div className="flex justify-between items-center text-sm">

@@ -83,7 +83,7 @@ export function LeaveRequestCard({ request, onApprove, onDecline, isManager }: L
           {request.staffId ? (
             <Link
               href={`/staff/${request.staffId}`}
-              className="text-sm font-semibold text-midnight hover:text-gold transition-colors flex items-center gap-1"
+              className="text-sm font-semibold text-midnight hover:text-gold transition-colors flex items-center gap-1 group"
             >
               {request.staffName}
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 opacity-0 group-hover:opacity-100">

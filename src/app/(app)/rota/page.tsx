@@ -14,6 +14,7 @@ import { useRotaEntries, usePublishRota } from '@/hooks/useRota';
 import { useFloors } from '@/hooks/useFloors';
 import { usePayPeriod } from '@/hooks/usePayPeriod';
 import { useCost } from '@/hooks/useCost';
+import { useAdditionalCosts } from '@/hooks/useAdditionalCosts';
 import { useSession } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -141,6 +142,12 @@ export default function RotaPage() {
     RO: { hours: 0, category: 'absence' },
     AL: { hours: 0, category: 'absence' },
     ML: { hours: 0, category: 'absence' },
+    SL: { hours: 0, category: 'absence' },
+    PL: { hours: 0, category: 'absence' },
+    M: { hours: 2, category: 'work' },
+    OOH: { hours: 4, category: 'work' },
+    HO: { hours: 8, category: 'work' },
+    TR: { hours: 8, category: 'work' },
     Kg: { hours: 0, category: 'float' },
     Uj: { hours: 0, category: 'float' },
     Th: { hours: 0, category: 'float' },
@@ -182,8 +189,10 @@ export default function RotaPage() {
     };
   });
 
-  const budgetCapGbp = 33500;
-  const costSummary = useCost(costEntries, costStaff, budgetCapGbp, payPeriod.days);
+  const budgetCapGbp = 72000;
+  const { data: additionalCostsData } = useAdditionalCosts(startDateStr);
+  const additionalCostTotal = additionalCostsData?.totalAdditional ?? 0;
+  const costSummary = useCost(costEntries, costStaff, budgetCapGbp, payPeriod.days, additionalCostTotal);
 
   const isLoading = isLoadingFloors || isLoadingEntries || isPublishing;
 
@@ -243,6 +252,9 @@ export default function RotaPage() {
             capUtilisation={costSummary.capUtilisation}
             status={costSummary.status}
             scheduledHours={costSummary.scheduledHours}
+            salaryCost={costSummary.salaryCost}
+            additionalCostTotal={costSummary.additionalCostTotal}
+            rotaMonth={startDateStr}
           />
 
           <CostDashboard

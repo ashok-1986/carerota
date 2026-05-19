@@ -40,6 +40,15 @@ const iconBgMap = {
   slate: "bg-slate/10",
 };
 
+const dotColorMap = {
+  midnight: "bg-midnight",
+  teal: "bg-teal",
+  gold: "bg-gold",
+  warn: "bg-warn",
+  danger: "bg-danger",
+  slate: "bg-slate",
+};
+
 function AnimatedCounter({ target }: { target: number }) {
   const [display, setDisplay] = useState(0);
   const motionVal = useMotionValue(0);
@@ -84,7 +93,7 @@ export function DashboardKpiCard({ iconName, title, value, subtitle, color, href
           {isNumeric ? <AnimatedCounter target={numeric} /> : value}
         </p>
         <div className="flex items-center gap-1 mt-1.5">
-          <div className={cn("w-1 h-1 rounded-full", color === 'gold' ? 'bg-gold' : color === 'teal' ? 'bg-teal' : color === 'warn' ? 'bg-warn' : 'bg-slate')} />
+          <div className={cn("w-1 h-1 rounded-full", dotColorMap[color])} />
           <p className="text-xs text-slate/70">{subtitle}</p>
         </div>
       </div>

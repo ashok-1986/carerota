@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { staff, leaveRequests, rotaEntries, homes, shiftCodes } from "@/db/schema";
+import { staff, leaveRequests, rotaEntries, homes, shiftCodes, additionalCosts } from "@/db/schema";
 import { eq, and, count, sql } from "drizzle-orm";
 import { getPayPeriod } from "@/lib/utils";
 import { DashboardKpiGrid, type KpiItem } from "@/components/dashboard/DashboardKpiGrid";
@@ -57,6 +57,17 @@ export default async function DashboardPage() {
   `);
   const projectedCostPence = Number(projectedCostResult.rows[0]?.total ?? 0);
   const projectedCost = projectedCostPence / 100;
+
+  const rotaMonth = payPeriod.start.toISOString().slice(0, 10);
+  const additionalRows = await db
+    .select({ amount: additionalCosts.amount })
+    .from(additionalCosts)
+    .where(and(
+      eq(additionalCosts.homeId, homeId),
+      eq(additionalCosts.rotaMonth, rotaMonth)
+    ));
+  const additionalCostTotal = additionalRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+  const totalCost = projectedCost + additionalCostTotal;
 
   const kpiItems: KpiItem[] = [
     {
@@ -118,7 +129,9 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <CostSnapshot
-            projectedCost={projectedCost}
+            projectedCost={totalCost}
+            salaryCost={projectedCost}
+            additionalCostTotal={additionalCostTotal}
             budgetCap={budgetCap}
             homeName={home?.name ?? ""}
           />
