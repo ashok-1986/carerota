@@ -17,7 +17,6 @@ import { useCost } from '@/hooks/useCost';
 import { useSession } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SHIFT_CODES } from '@/lib/constants';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { PatternSetup } from '@/components/rota/PatternSetup';
@@ -29,33 +28,28 @@ export default function RotaPage() {
   const homeId = session?.user?.homeId || 'active-home';
   const queryClient = useQueryClient();
 
-  // Reference date for tracking active pay periods
   const [referenceDate, setReferenceDate] = useState(() => new Date());
   const payPeriod = usePayPeriod(19, referenceDate);
-  
+
   const startDateStr = format(payPeriod.start, 'yyyy-MM-dd');
   const endDateStr = format(payPeriod.end, 'yyyy-MM-dd');
 
-  // Floor navigation
   const { data: floors = [], isLoading: isLoadingFloors } = useFloors();
   const [selectedFloorId, setSelectedFloorId] = useState<string | undefined>(undefined);
   const activeFloorId = selectedFloorId || floors[0]?.id;
 
-  // Dialog State Management
   const [isPatternSetupOpen, setIsPatternSetupOpen] = useState(false);
   const [isPublishReviewOpen, setIsPublishReviewOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isFillingPatterns, setIsFillingPatterns] = useState(false);
 
-  // Fetch rota entries
   const { data, isLoading: isLoadingEntries, error } = useRotaEntries(
-    homeId, 
-    startDateStr, 
-    endDateStr, 
+    homeId,
+    startDateStr,
+    endDateStr,
     activeFloorId
   );
 
-  // Publish mutation
   const { mutate: publishRota, isPending: isPublishing } = usePublishRota();
 
   const handlePreviousPeriod = () => {
@@ -66,10 +60,9 @@ export default function RotaPage() {
     setReferenceDate((prev) => addMonths(prev, 1));
   };
 
-  // Triggers pattern application to monthly schedule grid
   const handleFillFromPattern = async () => {
     if (!startDateStr || !endDateStr) return;
-    
+
     setIsFillingPatterns(true);
     try {
       const payload: { startDate: string; endDate: string; floorId?: string } = {
@@ -90,8 +83,7 @@ export default function RotaPage() {
         const errorText = await res.text();
         throw new Error(errorText || 'Server error applying patterns');
       }
-      
-      // Invalidate query caching to reload all entries inside grid dynamically
+
       await queryClient.invalidateQueries({ queryKey: ['rota'] });
       toast.success('Monthly rota successfully pre-populated from repeating patterns!');
     } catch (err) {
@@ -101,7 +93,6 @@ export default function RotaPage() {
     }
   };
 
-  // Triggers the final DB publish action from the compliance reviewed checklist
   const handleConfirmPublish = () => {
     setIsPublishReviewOpen(false);
     toast.promise(
@@ -125,45 +116,62 @@ export default function RotaPage() {
     );
   };
 
-  // Convert raw API response entries/staff into useCost hook types
-  type CostEntry = { code?: string; staffId: string; shiftDate: string; isPublished?: boolean };
-  type CostStaff = { id: string; role: string; name: string; employmentType?: string; contractedHours?: number; payRateHourly?: number };
-  const costEntries = (data?.entries || []).map((e: CostEntry) => {
-    const shiftCodeInfo = SHIFT_CODES.find((sc) => sc.code === e.code);
-    return {
-      staffId: e.staffId,
-      shiftCode: e.code || '',
-      shiftDate: e.shiftDate,
-      hours: shiftCodeInfo?.hours || 0,
-      category: shiftCodeInfo?.category || 'work',
-    };
-  });
+  // Build cost data from entries + staff
+  // entries from API have: code (string like "LD"), staffId, shiftDate
+  // staff from sections have: payRateHourly (in pence), role, etc.
+  type CostEntry = { shiftCode: string; staffId: string; shiftDate: string; hours: number; category: 'work' | 'absence' | 'float' };
+  type ApiCostStaff = { id: string; name: string; role: string; employmentType?: string; contractedHours?: number | null; payRateHourly?: number | null; homeFloorId?: string | null };
+  type ApiEntry = { code?: string; staffId?: string; shiftDate?: string; hours?: number | string; category?: string; isPublished?: boolean };
 
-  const costStaff = (data?.sections || []).flatMap((sec: { staff: CostStaff[] }) => sec.staff).map((s: CostStaff) => ({
-    id: s.id,
-    role: s.role,
-    name: s.name,
-    employmentType: s.employmentType || 'full_time',
-    contractedHours: s.contractedHours || 0,
-    payRateHourly: s.payRateHourly || 0,
+  const costEntries: CostEntry[] = (data?.entries || []).map((e: ApiEntry) => ({
+    shiftCode: e.code || '',
+    staffId: e.staffId || '',
+    shiftDate: e.shiftDate || '',
+    hours: typeof e.hours === 'number' ? e.hours : (parseFloat(String(e.hours || '0')) || 0),
+    category: (e.category as 'work' | 'absence' | 'float') || 'work',
   }));
 
-  const budgetCapGbp = 33500; // Default budget cap for Marlborough Court
+  const costStaff: import('@/types/cost').CostStaff[] = (data?.sections || []).flatMap((sec: { staff: ApiCostStaff[] }) =>
+    sec.staff.map((s: ApiCostStaff) => ({
+      id: s.id,
+      role: s.role || 'caregiver',
+      employmentType: (s.employmentType as 'full_time' | 'part_time' | 'bank') || 'full_time',
+      contractedHours: typeof s.contractedHours === 'number' ? s.contractedHours : parseFloat(String(s.contractedHours || '0')) || 0,
+      payRateHourly: typeof s.payRateHourly === 'number' ? s.payRateHourly : parseFloat(String(s.payRateHourly || '0')) || 0,
+      homeFloorId: activeFloorId ?? '',
+    }))
+  );
+
+  const patternStaffList = costStaff.map((s) => ({
+    id: s.id,
+    name: (s as ApiCostStaff).name || s.id,
+    role: s.role,
+    employmentType: s.employmentType,
+    contractedHours: (s.contractedHours as unknown as string | null) ?? null,
+    payRateHourly: (s.payRateHourly as unknown as string | null) ?? null,
+    homeId: session?.user?.homeId ?? '',
+    homeFloorId: typeof (s as ApiCostStaff).homeFloorId === 'string' ? (s as ApiCostStaff).homeFloorId : null,
+    authUserId: null,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  })) as import('@/types/db').Staff[];
+
+  const budgetCapGbp = 33500;
   const costSummary = useCost(costEntries, costStaff, budgetCapGbp, payPeriod.days);
 
   const isLoading = isLoadingFloors || isLoadingEntries || isPublishing;
 
-  // Compute draft status based on loaded entries
-  const isDraft = data?.entries && data.entries.length > 0 
-    ? data.entries.some((e: CostEntry) => !e.isPublished) 
+  const isDraft = data?.entries && data.entries.length > 0
+    ? data.entries.some((e: ApiEntry) => !e.isPublished)
     : true;
 
   const activeFloorName = floors.find(f => f.id === activeFloorId)?.name || 'Care Home';
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto">
-      <PageHeader 
-        title="Monthly Rota" 
+      <PageHeader
+        title="Monthly Rota"
         description={`Plan and publish the schedule for ${activeFloorName}.`}
         breadcrumbs={[
           { label: 'CareRota' },
@@ -173,36 +181,35 @@ export default function RotaPage() {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
         {floors.length > 0 ? (
-          <FloorTabs 
-            floors={floors} 
-            activeFloorId={activeFloorId || ''} 
-            onTabChange={setSelectedFloorId} 
+          <FloorTabs
+            floors={floors}
+            activeFloorId={activeFloorId || ''}
+            onTabChange={setSelectedFloorId}
           />
         ) : (
           <div className="h-10 w-48 bg-slate/5 rounded-lg animate-pulse" />
         )}
-        
-        <PayPeriodNav 
-          startDate={payPeriod.start} 
-          endDate={payPeriod.end} 
-          onPrevious={handlePreviousPeriod} 
-          onNext={handleNextPeriod} 
+
+        <PayPeriodNav
+          startDate={payPeriod.start}
+          endDate={payPeriod.end}
+          onPrevious={handlePreviousPeriod}
+          onNext={handleNextPeriod}
         />
       </div>
 
-      <RotaToolbar 
-        isDraft={isDraft} 
-        onPublish={() => setIsPublishReviewOpen(true)} 
-        onExport={() => setIsExportDialogOpen(true)} 
+      <RotaToolbar
+        isDraft={isDraft}
+        onPublish={() => setIsPublishReviewOpen(true)}
+        onExport={() => setIsExportDialogOpen(true)}
         onOpenPatternSetup={() => setIsPatternSetupOpen(true)}
         onFillFromPattern={handleFillFromPattern}
         isFilling={isFillingPatterns}
       />
 
-      {/* Live Cost Metrics Dashboard */}
       {!isLoading && !error && data && (
         <div className="flex flex-col gap-6 mb-6">
-          <CostBar 
+          <CostBar
             projectedCost={costSummary.projectedCost}
             budgetCapGbp={budgetCapGbp}
             variance={costSummary.variance}
@@ -212,8 +219,8 @@ export default function RotaPage() {
             scheduledHours={costSummary.scheduledHours}
             budgetedHours={costSummary.budgetedHours}
           />
-          
-          <CostDashboard 
+
+          <CostDashboard
             costByRole={costSummary.costByRole}
             projectedCost={costSummary.projectedCost}
             scheduledHours={costSummary.scheduledHours}
@@ -234,9 +241,9 @@ export default function RotaPage() {
           Failed to load rota entries. Please try again.
         </div>
       ) : (
-        <MonthlyRotaGrid 
-          days={payPeriod.days} 
-          sections={data?.sections || []} 
+        <MonthlyRotaGrid
+          days={payPeriod.days}
+          sections={data?.sections || []}
           initialEntries={data?.entries || []}
           homeId={homeId}
         />
@@ -244,30 +251,27 @@ export default function RotaPage() {
 
       <RotaLegend />
 
-      {/* 1. Weekly Repeated Patterns Editor Dialog */}
       {isPatternSetupOpen && (
         <PatternSetup
           isOpen={isPatternSetupOpen}
           onClose={() => setIsPatternSetupOpen(false)}
-          staffList={costStaff}
+          staffList={patternStaffList}
         />
       )}
 
-      {/* 2. visual checklist & CQC publishing review Dialog */}
       {isPublishReviewOpen && (
         <PublishReview
           isOpen={isPublishReviewOpen}
           onClose={() => setIsPublishReviewOpen(false)}
           onConfirmPublish={handleConfirmPublish}
           entries={data?.entries || []}
-          staffList={costStaff}
+          staffList={patternStaffList}
           floors={floors}
           dates={payPeriod.days.map((d: Date) => format(d, 'yyyy-MM-dd'))}
           isPublishing={isPublishing}
         />
       )}
 
-      {/* 3. Softworks CSV Exporter Dialog */}
       {isExportDialogOpen && (
         <ExportCsvDialog
           isOpen={isExportDialogOpen}

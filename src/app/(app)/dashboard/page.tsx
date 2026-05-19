@@ -54,7 +54,8 @@ export default async function DashboardPage() {
     WHERE re.home_id = ${homeId}
     AND re.is_published = true
   `);
-  const projectedCost = Number(projectedCostResult.rows[0]?.total ?? 0);
+  const projectedCostPence = Number(projectedCostResult.rows[0]?.total ?? 0);
+  const projectedCost = projectedCostPence / 100;
 
   const kpiItems: KpiItem[] = [
     {
