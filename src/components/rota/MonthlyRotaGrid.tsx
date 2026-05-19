@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef, MouseEvent } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect, useRef, useMemo, MouseEvent } from 'react';
+import { format, isToday } from 'date-fns';
 import { RotaCell } from './RotaCell';
 import { SectionHeader } from './SectionHeader';
 import { ShiftCodePicker } from './ShiftCodePicker';
 import { useRotaDrag } from '@/hooks/useRotaDrag';
 import { useBulkUpdateCells } from '@/hooks/useRota';
+import { SHIFT_CODES } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 
 type StaffInfo = { id: string; name: string; contractedHours: number; homeFloorId: string | null };
 type Section = { title: string; staff: StaffInfo[] };
@@ -35,6 +37,20 @@ function getRotaMonthDate(dateStr: string): string {
   }
 }
 
+function getCoverageCount(
+  sectionStaff: StaffInfo[],
+  date: Date,
+  entries: MonthlyRotaGridProps['initialEntries']
+): number {
+  const dateStr = format(date, 'yyyy-MM-dd');
+  return sectionStaff.filter(staff => {
+    const entry = entries?.find(e => e.staffId === staff.id && e.shiftDate === dateStr);
+    const code = entry?.code || null;
+    const shift = SHIFT_CODES.find(s => s.code === code);
+    return shift?.category === 'work';
+  }).length;
+}
+
 export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }: MonthlyRotaGridProps) {
   useEffect(() => {
     const handler = (event: ErrorEvent) => {
@@ -50,6 +66,31 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     return () => window.removeEventListener('error', handler);
   }, []);
 
+  const baseData = useMemo<Record<string, string>>(() => {
+    const nextData: Record<string, string> = {};
+    initialEntries.forEach(entry => {
+      const key = `${entry.staffId}_${entry.shiftDate}`;
+      nextData[key] = entry.code ?? '';
+    });
+    return nextData;
+  }, [initialEntries]);
+
+  const [optimisticOverrides, setOptimisticOverrides] = useState<Record<string, string>>({});
+  const { mutate: bulkUpdate } = useBulkUpdateCells();
+  const lastMousePosRef = useRef({ top: 0, left: 0 });
+
+  const cellData = useMemo(() => {
+    const merged: Record<string, string> = { ...baseData };
+    for (const [key, value] of Object.entries(optimisticOverrides)) {
+      if (value === '') {
+        delete merged[key];
+      } else {
+        merged[key] = value;
+      }
+    }
+    return merged;
+  }, [baseData, optimisticOverrides]);
+
   const [pickerState, setPickerState] = useState<{
     isOpen: boolean;
     selectedCells: Array<{ staffId: string; dateStr: string }>;
@@ -60,24 +101,6 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     position: { top: 0, left: 0 }
   });
 
-  const [cellData, setCellData] = useState<Record<string, string>>({});
-  const { mutate: bulkUpdate } = useBulkUpdateCells();
-  
-  // Keep track of the last mouse position for popover positioning
-  const lastMousePosRef = useRef({ top: 0, left: 0 });
-
-  // Map backend entries to local state
-  useEffect(() => {
-    const nextData: Record<string, string> = {};
-    initialEntries.forEach(entry => {
-      const key = `${entry.staffId}_${entry.shiftDate}`;
-      nextData[key] = entry.code ?? '';
-    });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCellData(nextData);
-  }, [initialEntries]);
-
-  // Handle Drag Selection
   const { dragState, startDrag, onDragOver, endDrag } = useRotaDrag((cells) => {
     if (cells.length > 0) {
       setPickerState({
@@ -100,17 +123,16 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
   }, [dragState.isDragging, endDrag]);
 
   const handleMouseDown = (e: MouseEvent, staffId: string, dateStr: string) => {
-    if (e.button !== 0) return; // only left click
-    
-    // Close picker if open
+    if (e.button !== 0) return;
+
     if (pickerState.isOpen) {
       setPickerState(prev => ({ ...prev, isOpen: false }));
     }
 
     const rect = e.currentTarget.getBoundingClientRect();
-    lastMousePosRef.current = { 
-      top: rect.bottom + window.scrollY + 8, 
-      left: Math.max(10, rect.left + window.scrollX - 100) 
+    lastMousePosRef.current = {
+      top: rect.bottom + window.scrollY + 8,
+      left: Math.max(10, rect.left + window.scrollX - 100)
     };
 
     startDrag(staffId, dateStr);
@@ -119,9 +141,9 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
   const handleMouseEnter = (e: MouseEvent, staffId: string, dateStr: string) => {
     if (dragState.isDragging) {
       const rect = e.currentTarget.getBoundingClientRect();
-      lastMousePosRef.current = { 
-        top: rect.bottom + window.scrollY + 8, 
-        left: Math.max(10, rect.left + window.scrollX - 100) 
+      lastMousePosRef.current = {
+        top: rect.bottom + window.scrollY + 8,
+        left: Math.max(10, rect.left + window.scrollX - 100)
       };
       onDragOver(staffId, dateStr);
     }
@@ -129,8 +151,7 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
 
   const handleShiftSelect = (code: string | null) => {
     if (pickerState.selectedCells.length > 0) {
-      // Optimistic Update
-      setCellData(prev => {
+      setOptimisticOverrides(prev => {
         const next = { ...prev };
         pickerState.selectedCells.forEach(({ staffId, dateStr }) => {
           const key = `${staffId}_${dateStr}`;
@@ -140,9 +161,7 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
         return next;
       });
 
-      // API Update
       const updates = pickerState.selectedCells.map(({ staffId, dateStr }) => {
-        // Find staff homeFloorId from sections
         let floorId = '00000000-0000-0000-0000-000000000000';
         for (const section of sections) {
           const s = section.staff.find(e => e.id === staffId);
@@ -159,7 +178,7 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
           shiftCodeId: code,
           homeFloorId: floorId,
           rotaMonth: getRotaMonthDate(dateStr),
-          createdBy: 'system', // Handled by API session user, but match schema inputs
+          createdBy: 'system',
         };
       });
 
@@ -171,18 +190,39 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     <div className="bg-white border border-slate/20 rounded-xl shadow-sm overflow-hidden flex flex-col mt-6 select-none">
       {/* Sticky Header Row */}
       <div className="flex border-b border-slate/20 bg-pearl/50 sticky top-0 z-20">
-        <div className="w-64 flex-shrink-0 p-4 border-r border-slate/20 font-semibold text-midnight text-sm flex items-center">
+        <div className="w-48 flex-shrink-0 p-3 border-r border-slate/20 font-semibold text-midnight text-sm flex items-center">
           Staff Member
         </div>
         <div className="flex-1 flex overflow-x-auto no-scrollbar">
-          {days.map((day, i) => (
-            <div key={i} className="w-14 flex-shrink-0 p-2 border-r border-slate/10 flex flex-col items-center justify-center bg-white">
-              <span className="text-[10px] uppercase text-slate font-bold">{format(day, 'EEE')}</span>
-              <span className="text-sm font-bold text-midnight">{format(day, 'dd')}</span>
-            </div>
-          ))}
-          <div className="w-24 flex-shrink-0 p-4 border-l border-slate/20 font-semibold text-midnight text-sm text-center">
-            Total Hrs
+          {days.map((day, i) => {
+            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+            const today = isToday(day);
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "w-14 flex-shrink-0 p-1.5 border-r border-slate/10 flex flex-col items-center justify-center",
+                  isWeekend ? "bg-slate/5" : "bg-white",
+                  today && "border-t-2 border-t-gold"
+                )}
+              >
+                <span className={cn(
+                  "text-[10px] uppercase font-bold",
+                  today ? "text-gold" : "text-slate"
+                )}>
+                  {format(day, 'EEE')}
+                </span>
+                <span className={cn(
+                  "text-xs font-bold",
+                  today ? "text-gold" : "text-midnight"
+                )}>
+                  {format(day, 'dd')}
+                </span>
+              </div>
+            );
+          })}
+          <div className="w-20 flex-shrink-0 p-3 border-l border-slate/20 font-semibold text-midnight text-xs text-center">
+            Total
           </div>
         </div>
       </div>
@@ -192,36 +232,35 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
         {sections.map((section) => (
           <div key={section.title}>
             <SectionHeader title={section.title} count={section.staff.length} />
-            
+
             {section.staff.map((employee) => (
               <div key={employee.id} className="flex border-b border-slate/10 hover:bg-slate/5 transition-colors group">
-                <div className="w-64 flex-shrink-0 p-3 border-r border-slate/10 bg-white group-hover:bg-slate/5 flex flex-col justify-center sticky left-0 z-10">
-                  <span className="text-sm font-bold text-midnight truncate">{employee.name}</span>
-                  <span className="text-[11px] text-slate font-medium">{employee.contractedHours} hrs/wk</span>
+                <div className="w-48 flex-shrink-0 p-3 border-r border-slate/10 bg-white group-hover:bg-slate/5 flex flex-col justify-center sticky left-0 z-10 min-w-[160px]">
+                  <span className="text-xs font-bold text-midnight truncate">{employee.name}</span>
+                  <span className="text-[10px] text-slate font-medium">{employee.contractedHours} hrs/wk</span>
                 </div>
-                
+
                 <div className="flex-1 flex">
                   {days.map((day, i) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const key = `${employee.id}_${dateStr}`;
                     const code = cellData[key] || null;
-                    
-                    let category: 'work' | 'absence' | 'float' | 'empty' = 'empty';
-                    if (code) {
-                      if (['AL', 'RO', 'ML'].includes(code)) category = 'absence';
-                      else if (['Kg', 'Uj', 'Th'].includes(code)) category = 'float';
-                      else category = 'work';
-                    }
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
                     const isDragged = dragState.paintedCells.has(`${employee.id}|${dateStr}`);
                     const isSelected = pickerState.isOpen && pickerState.selectedCells.some(c => c.staffId === employee.id && c.dateStr === dateStr);
                     const isActive = isDragged || isSelected;
 
                     return (
-                      <div key={i} className="w-14 flex-shrink-0 p-1 flex items-center justify-center border-r border-slate/10/50">
-                        <RotaCell 
-                          code={code} 
-                          category={category} 
+                      <div
+                        key={i}
+                        className={cn(
+                          "w-14 flex-shrink-0 p-0.5 flex items-center justify-center border-r border-slate/10/50",
+                          isWeekend ? "bg-slate/5" : "bg-white"
+                        )}
+                      >
+                        <RotaCell
+                          code={code}
                           isActive={isActive}
                           onMouseDown={(e) => handleMouseDown(e, employee.id, dateStr)}
                           onMouseEnter={(e) => handleMouseEnter(e, employee.id, dateStr)}
@@ -229,21 +268,50 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
                       </div>
                     );
                   })}
-                  
-                  <div className="w-24 flex-shrink-0 p-3 border-l border-slate/10 flex items-center justify-center bg-white group-hover:bg-slate/5">
-                    <div className="flex flex-col items-center">
-                      <span className="text-sm font-bold text-midnight">36.0</span>
-                      <span className="text-[10px] text-success font-semibold">Match</span>
-                    </div>
+
+                  <div className="w-20 flex-shrink-0 p-2 border-l border-slate/10 flex items-center justify-center bg-pearl/30 group-hover:bg-slate/5">
+                    <span className="text-[10px] font-semibold text-slate">—</span>
                   </div>
                 </div>
               </div>
             ))}
+
+            {/* Coverage Footer Row */}
+            <div className="flex bg-midnight/5 border-b border-slate/10">
+              <div className="w-48 flex-shrink-0 p-2 border-r border-slate/10 flex items-center sticky left-0 z-10 bg-midnight/5 min-w-[160px]">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-midnight">Coverage</span>
+              </div>
+              <div className="flex-1 flex">
+                {days.map((day, i) => {
+                  const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                  const count = getCoverageCount(section.staff, day, initialEntries);
+                  const bgClass = count === 0 ? 'bg-danger/10 text-danger' :
+                    count === 1 ? 'bg-amber-50 text-amber-700' :
+                    'bg-teal/10 text-teal';
+                  const fontClass = count < 2 ? 'font-bold' : 'font-semibold';
+
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-14 flex-shrink-0 p-0.5 flex items-center justify-center border-r border-slate/10/50",
+                        isWeekend ? "bg-slate/5" : "bg-white"
+                      )}
+                    >
+                      <span className={cn("text-xs", bgClass, fontClass)}>{count}</span>
+                    </div>
+                  );
+                })}
+                <div className="w-20 flex-shrink-0 p-2 border-l border-slate/10 flex items-center justify-center bg-midnight/5">
+                  <span className="text-[10px] text-slate">—</span>
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
 
-      <ShiftCodePicker 
+      <ShiftCodePicker
         isOpen={pickerState.isOpen}
         onSelect={handleShiftSelect}
         onClose={() => setPickerState(prev => ({ ...prev, isOpen: false }))}

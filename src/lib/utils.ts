@@ -36,3 +36,26 @@ export function formatCurrency(amountGbp: number): string {
     maximumFractionDigits: 2,
   }).format(amountGbp);
 }
+
+export function formatSectionLabel(raw: string): string {
+  return raw
+    .split(' - ')
+    .map((part) =>
+      part
+        .split('_')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+    )
+    .join(' — ');
+}
+
+export function formatFloorName(code: string): string {
+  const names: Record<string, string> = {
+    Kg: 'King George',
+    Uj: 'Union Jack',
+    Th: 'Thames',
+    Of: 'Office',
+    An: 'Ancillary',
+  };
+  return names[code] ?? code;
+}

@@ -6,7 +6,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL || '';
+const connectionString = process.env.DATABASE_URL || "";
 if (!connectionString) {
   console.error("DATABASE_URL is not set");
   process.exit(1);
@@ -49,7 +49,8 @@ async function main() {
     { code: "E", label: "Early", hours: "8", category: "work", floors: ["care", "all"] },
     { code: "L", label: "Late", hours: "8", category: "work", floors: ["care", "all"] },
     { code: "N", label: "Night", hours: "11.5", category: "work", floors: ["care", "all"] },
-    { code: "RO", label: "Rest of Day", hours: "0", category: "work", floors: ["care", "all"] },
+    { code: "Su", label: "Supernumerary", hours: "12", category: "work", floors: ["care", "all"] },
+    { code: "RO", label: "Rest of Day", hours: "0", category: "absence", floors: ["care", "all"] },
     { code: "AL", label: "Annual Leave", hours: "0", category: "absence", floors: ["all"] },
     { code: "ML", label: "Mat Leave", hours: "0", category: "absence", floors: ["all"] },
     { code: "SL", label: "Sick Leave", hours: "0", category: "absence", floors: ["all"] },
@@ -60,7 +61,8 @@ async function main() {
     { code: "OOH", label: "Out of Hours", hours: "4", category: "work", floors: ["ancillary"] },
   ]).returning();
 
-  // Kings floor: 20 staff across 4 sections
+  const sc = new Map(insertedShiftCodes.map(s => [s.code, s]));
+
   const kingsFloor = insertedFloors[0];
   const uptonFloor = insertedFloors[1];
   const thamesFloor = insertedFloors[2];
@@ -92,7 +94,7 @@ async function main() {
     { homeId: home.id, homeFloorId: kingsFloor.id, name: "Emmanuel Asare", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
     { homeId: home.id, homeFloorId: kingsFloor.id, name: "Michael Nkrumah", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
 
-    // Bank staff (float) - 2 staff
+    // Bank staff (float) + Home Manager
     { homeId: home.id, homeFloorId: kingsFloor.id, name: "Daniel Acheampong", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "1300", isActive: true },
     { homeId: home.id, homeFloorId: kingsFloor.id, name: "Sarah Johnson", role: "home_manager", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1800", isActive: true },
 
@@ -114,31 +116,89 @@ async function main() {
   console.log(`  inserted ${insertedStaff.length} staff`);
 
   const today = new Date();
+  const periodStart = new Date(today.getFullYear(), today.getMonth(), 19);
+  if (today.getDate() < 19) periodStart.setMonth(periodStart.getMonth() - 1);
+  const periodEnd = new Date(periodStart);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  periodEnd.setDate(periodEnd.getDate() - 1);
+
+  const codes = {
+    N: sc.get('N')!,
+    LD: sc.get('LD')!,
+    E: sc.get('E')!,
+    L: sc.get('L')!,
+    RO: sc.get('RO')!,
+  };
+
   const entriesToInsert = [];
-  for (const member of insertedStaff) {
-    for (let i = 1; i <= 28; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      const dow = d.getDay();
-      const isWeekend = dow === 0 || dow === 6;
-      const isBank = member.employmentType === "bank";
+  for (let idx = 0; idx < insertedStaff.length; idx++) {
+    const member = insertedStaff[idx];
+    const role = member.role;
+    const empType = member.employmentType;
 
-      if (isWeekend || isBank) continue;
+    const isRN = role === 'registered_nurse';
+    const isSenior = role === 'senior_caregiver';
+    const isBank = empType === 'bank';
+    const isPartTime = empType === 'part_time';
 
-      const patternDay = dow === 0 ? 7 : dow;
-      let codeIndex = (patternDay + insertedStaff.indexOf(member)) % 3;
-      if (codeIndex === 0) codeIndex = 2;
+    for (const currentDate of getDateRange(periodStart, periodEnd)) {
+      const dow = currentDate.getDay();
+      const dateStr = currentDate.toISOString().split('T')[0];
+      let shiftCode = null;
 
-      entriesToInsert.push({
-        homeId: home.id,
-        staffId: member.id,
-        homeFloorId: member.homeFloorId!,
-        shiftDate: d.toISOString().split("T")[0],
-        shiftCodeId: insertedShiftCodes[codeIndex].id,
-        rotaMonth: new Date(today.getFullYear(), today.getMonth(), 19).toISOString().split("T")[0],
-        isPublished: true,
-        createdBy: insertedStaff[0].id,
-      });
+      if (isRN) {
+        // Nights Mon, Tue, Wed, Sat, Sun; RO Thu, Fri
+        if (dow === 1 || dow === 2 || dow === 3 || dow === 6 || dow === 0) {
+          shiftCode = codes.N;
+        }
+        // else RO by default
+      } else if (isSenior) {
+        // Long Day Mon, Tue, Thu, Fri; RO Wed, Sat, Sun
+        if (dow === 1 || dow === 2 || dow === 4 || dow === 5) {
+          shiftCode = codes.LD;
+        }
+        // else RO by default
+      } else if (isBank) {
+        // Random 2 shifts per week: 1 LD + 1 E/L based on random
+const rand = Math.floor(Math.random() * 10);
+        if (rand < 3) {
+          // Pick a day to give an LD (roughly 3 per 10 days)
+          shiftCode = codes.LD;
+        } else if (rand < 6) {
+          // Pick a day to give E or L
+          shiftCode = rand % 2 === 0 ? codes.E : codes.L;
+        }
+        // else RO
+      } else if (isPartTime) {
+        // E or L on Mon, Wed, Fri only (3 days per week)
+        if (dow === 1 || dow === 3 || dow === 5) {
+          shiftCode = dow === 1 ? codes.E : codes.L;
+        }
+        // else RO
+      } else {
+        // Full-time caregiver: even staff index = pattern A, odd = pattern B
+        // Pattern A: E Mon, L Tue, RO Wed, E Thu, L Fri, RO Sat, RO Sun
+        // Pattern B: L Mon, E Tue, RO Wed, L Thu, E Fri, RO Sat, RO Sun
+        const isEven = idx % 2 === 0;
+        if (dow === 1) shiftCode = isEven ? codes.E : codes.L;
+        else if (dow === 2) shiftCode = isEven ? codes.L : codes.E;
+        else if (dow === 4) shiftCode = isEven ? codes.E : codes.L;
+        else if (dow === 5) shiftCode = isEven ? codes.L : codes.E;
+        // Wed, Sat, Sun: RO by default
+      }
+
+      if (shiftCode) {
+        entriesToInsert.push({
+          homeId: home.id,
+          staffId: member.id,
+          homeFloorId: member.homeFloorId!,
+          shiftDate: dateStr,
+          shiftCodeId: shiftCode.id,
+          rotaMonth: periodStart.toISOString().split('T')[0],
+          isPublished: true,
+          createdBy: insertedStaff[0].id,
+        });
+      }
     }
   }
 
@@ -157,3 +217,11 @@ main().catch((e) => {
   console.error("Error seeding database:", e.message);
   process.exit(1);
 });
+
+function* getDateRange(start: Date, end: Date) {
+  const cur = new Date(start);
+  while (cur <= end) {
+    yield new Date(cur);
+    cur.setDate(cur.getDate() + 1);
+  }
+}
