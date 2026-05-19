@@ -20,7 +20,7 @@ export function RotaToolbar({
   isFilling,
 }: RotaToolbarProps) {
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="glass-panel rounded-xl px-5 py-3 flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
         {isDraft ? (
           <div className="flex items-center gap-2 bg-warn/10 text-warn border border-warn/20 px-3 py-1.5 rounded-full text-sm font-semibold animate-pulse">
@@ -46,7 +46,7 @@ export function RotaToolbar({
           <button
             onClick={onFillFromPattern}
             disabled={isFilling}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-sky-500 bg-sky-500/10 border border-sky-500/20 rounded-full hover:bg-sky-500/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-teal bg-teal/10 border border-teal/20 rounded-full hover:bg-teal/20 transition-all disabled:opacity-50"
           >
             {isFilling ? (
               <Loader2 size={14} className="animate-spin" />
@@ -59,18 +59,18 @@ export function RotaToolbar({
       </div>
 
       <div className="flex items-center gap-3">
-        <button 
+        <button
           onClick={onExport}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate dark:text-pearl bg-white dark:bg-slate-900 border border-slate/20 rounded-lg hover:bg-slate/5 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-midnight bg-white border border-slate/20 rounded-lg hover:bg-slate/5 transition-colors shadow-sm"
         >
           <Download size={16} />
           Export
         </button>
-        
+
         {isDraft && (
-          <button 
+          <button
             onClick={onPublish}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gold rounded-lg hover:bg-gold/90 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-midnight bg-gold rounded-lg hover:bg-gold/90 transition-colors shadow-sm"
           >
             <UploadCloud size={16} />
             Publish Rota

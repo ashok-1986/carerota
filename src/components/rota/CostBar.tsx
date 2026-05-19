@@ -8,43 +8,36 @@ import { AlertTriangle, CheckCircle, Flame } from 'lucide-react';
 
 interface CostBarProps {
   projectedCost: number;
-  budgetCapGbp: number;
   variance: number;
   isOverBudget: boolean;
   capUtilisation: number;
   status: 'safe' | 'warning' | 'danger';
   scheduledHours: number;
-  budgetedHours: number;
 }
 
 export function CostBar({
   projectedCost,
-  budgetCapGbp,
   variance,
   isOverBudget,
   capUtilisation,
   status,
   scheduledHours,
-  budgetedHours,
 }: CostBarProps) {
   const statusColors = {
     safe: {
       bg: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-      bar: 'bg-emerald-500',
+      bar: 'bg-teal',
       icon: CheckCircle,
-      glow: 'shadow-emerald-500/20',
     },
     warning: {
       bg: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-      bar: 'bg-amber-500',
+      bar: 'bg-gold',
       icon: AlertTriangle,
-      glow: 'shadow-amber-500/20',
     },
     danger: {
       bg: 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-      bar: 'bg-rose-500',
+      bar: 'bg-danger',
       icon: Flame,
-      glow: 'shadow-rose-500/20',
     },
   };
 
@@ -69,15 +62,14 @@ export function CostBar({
   const clampedPercent = Math.min(capUtilisation * 100, 100);
 
   return (
-    <div className="bg-white border border-slate/15 rounded-xl p-6 shadow-sm flex flex-col gap-5 transition-all hover:shadow-md">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="glass-card rounded-xl p-6 flex flex-col gap-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-slate tracking-wide uppercase">Projected Cost</span>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-midnight tracking-tight">
+            <span className="text-2xl font-bold text-gold tracking-tight">
               {formatCurrency(projectedCost)}
             </span>
-            <span className="text-xs text-slate font-medium">of {formatCurrency(budgetCapGbp)}</span>
           </div>
         </div>
 
@@ -102,12 +94,9 @@ export function CostBar({
           <div className="flex items-baseline gap-2">
             <span className={cn(
               "text-2xl font-bold tracking-tight",
-              isOverBudget ? "text-rose-600" : "text-emerald-600"
+              isOverBudget ? "text-danger" : "text-teal"
             )}>
               {isOverBudget ? '-' : '+'}{formatCurrency(variance)}
-            </span>
-            <span className="text-xs text-slate font-medium">
-              {isOverBudget ? 'over cap' : 'under cap'}
             </span>
           </div>
         </div>
@@ -118,21 +107,17 @@ export function CostBar({
             <span className="text-2xl font-bold text-midnight tracking-tight">
               {Math.round(scheduledHours * 10) / 10}h
             </span>
-            <span className="text-xs text-slate font-medium">
-              budget: {Math.round(budgetedHours * 10) / 10}h
-            </span>
           </div>
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <div className="w-full h-3.5 bg-slate/10 rounded-full overflow-hidden p-0.5 border border-slate/5">
+        <div className="w-full h-2.5 bg-slate/10 rounded-full overflow-hidden border border-slate/5">
           <div
             ref={barRef}
             className={cn(
-              "h-full rounded-full transition-all duration-500 ease-out shadow-sm",
-              currentStatus.bar,
-              currentStatus.glow
+              "h-full rounded-full transition-all duration-500 ease-out",
+              currentStatus.bar
             )}
             style={{ width: `${clampedPercent}%` }}
           />
@@ -140,15 +125,7 @@ export function CostBar({
 
         <div className="flex justify-between items-center text-xs font-medium text-slate">
           <span>0%</span>
-          {isOverBudget ? (
-            <span className="text-rose-600 font-bold flex items-center gap-1">
-              <AlertTriangle size={12} /> Live schedule exceeds current budget cap by {formatCurrency(variance)}
-            </span>
-          ) : (
-            <span className="text-emerald-600 font-semibold">
-              Remaining budget envelope: {formatCurrency(variance)}
-            </span>
-          )}
+          <span>{Math.round(capUtilisation * 100)}% of budget</span>
           <span>100%</span>
         </div>
       </div>

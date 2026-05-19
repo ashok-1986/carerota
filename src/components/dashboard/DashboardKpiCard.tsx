@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
-import { useMotionValue, useSpring, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { useMotionValue, useSpring } from 'framer-motion';
 import { cn } from "@/lib/utils";
 import { Users, Calendar, Clock, AlertTriangle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type KpiCardProps = {
   iconName: "users" | "calendar" | "clock" | "alert-triangle";
@@ -11,6 +12,7 @@ type KpiCardProps = {
   value: string;
   subtitle: string;
   color: "midnight" | "teal" | "gold" | "warn" | "danger" | "slate";
+  href?: string;
 };
 
 const ICON_MAP = {
@@ -38,48 +40,48 @@ const iconBgMap = {
   slate: "bg-slate/10",
 };
 
-function AnimatedValue({ value }: { value: string }) {
+function AnimatedCounter({ target }: { target: number }) {
+  const [display, setDisplay] = useState(0);
+  const motionVal = useMotionValue(0);
+  const spring = useSpring(motionVal, { stiffness: 60, damping: 12 });
+
+  useEffect(() => {
+    motionVal.set(target);
+  }, [target, motionVal]);
+
+  useEffect(() => {
+    const unsubscribe = spring.on('change', (v) => {
+      setDisplay(Math.round(v));
+    });
+    return unsubscribe;
+  }, [spring]);
+
+  return <span>{display.toLocaleString()}</span>;
+}
+
+export function DashboardKpiCard({ iconName, title, value, subtitle, color, href }: KpiCardProps) {
+  const Icon = ICON_MAP[iconName];
+  const router = useRouter();
+
   const matched = value.match(/-?\d+(?:\.\d+)?/);
   const numeric = matched ? parseFloat(matched[0]) : NaN;
   const isNumeric = !isNaN(numeric) && isFinite(numeric);
 
-  const motionVal = useMotionValue(0);
-  const spring = useSpring(motionVal, { stiffness: 60, damping: 12 });
-  const displayRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (isNumeric) {
-      motionVal.set(numeric);
-    }
-  }, [numeric, motionVal, isNumeric]);
-
-  useEffect(() => {
-    if (!isNumeric) return;
-    return spring.on('change', (v) => {
-      if (displayRef.current) {
-        displayRef.current.textContent = Math.round(v).toString();
-      }
-    });
-  }, [spring, isNumeric]);
-
-  if (!isNumeric) {
-    return <span>{value}</span>;
-  }
-
-  return <motion.span ref={displayRef}>{Math.round(numeric)}</motion.span>;
-}
-
-export function DashboardKpiCard({ iconName, title, value, subtitle, color }: KpiCardProps) {
-  const Icon = ICON_MAP[iconName];
   return (
-    <div className="bg-white border border-slate/20 shadow-sm rounded-lg p-5 flex items-start gap-4">
+    <div
+      className={cn(
+        "glass-card rounded-xl p-5 flex items-start gap-4 transition-all duration-200",
+        href ? "cursor-pointer hover:border-gold/30 hover:shadow-md" : ""
+      )}
+      onClick={href ? () => router.push(href) : undefined}
+    >
       <div className={cn("p-3 rounded-lg shrink-0", iconBgMap[color])}>
         <Icon className={cn("w-5 h-5", colorMap[color])} />
       </div>
       <div className="min-w-0">
         <p className="text-sm text-slate font-medium">{title}</p>
-        <p className={cn("text-2xl font-bold mt-0.5", colorMap[color])}>
-          <AnimatedValue value={value} />
+        <p className={cn("text-3xl font-bold mt-0.5", colorMap[color])}>
+          {isNumeric ? <AnimatedCounter target={numeric} /> : value}
         </p>
         <p className="text-xs text-slate/70 mt-1 truncate">{subtitle}</p>
       </div>

@@ -2,7 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Clock, ShieldCheck } from 'lucide-react';
+import { Clock, Building2 } from 'lucide-react';
+import Link from 'next/link';
 
 interface StaffCardProps {
   id: string;
@@ -22,17 +23,10 @@ const employmentTypeLabel: Record<string, string> = {
 };
 
 const roleColorMap: Record<string, { bg: string; text: string }> = {
-  'Registered Nurse': { bg: 'bg-amethyst/15', text: 'text-amethyst' },
-  'Nurse': { bg: 'bg-amethyst/15', text: 'text-amethyst' },
-  'RN': { bg: 'bg-amethyst/15', text: 'text-amethyst' },
-  'Senior Caregiver': { bg: 'bg-teal/15', text: 'text-teal' },
-  'Senior Carer': { bg: 'bg-teal/15', text: 'text-teal' },
-  'Caregiver': { bg: 'bg-midnight/10', text: 'text-midnight' },
-  'Carer': { bg: 'bg-midnight/10', text: 'text-midnight' },
-  'Care Assistant': { bg: 'bg-midnight/10', text: 'text-midnight' },
-  'Activity Coordinator': { bg: 'bg-gold/10', text: 'text-amber-700' },
-  'Housekeeping': { bg: 'bg-slate/10', text: 'text-slate' },
-  'Kitchen': { bg: 'bg-slate/10', text: 'text-slate' },
+  registered_nurse: { bg: 'bg-amethyst/15', text: 'text-amethyst' },
+  senior_caregiver: { bg: 'bg-teal/15', text: 'text-teal' },
+  caregiver: { bg: 'bg-sky-100', text: 'text-sky-700' },
+  home_manager: { bg: 'bg-gold/15', text: 'text-amber-700' },
 };
 
 const employmentBadge: Record<string, { bg: string; text: string }> = {
@@ -46,14 +40,27 @@ function getInitials(name: string): string {
 }
 
 function getRoleColor(role: string): { bg: string; text: string } {
-  for (const [key, value] of Object.entries(roleColorMap)) {
-    if (role.toLowerCase().includes(key.toLowerCase())) return value;
+  const key = role.toLowerCase();
+  for (const [k, v] of Object.entries(roleColorMap)) {
+    if (key.includes(k.replace('_', ' ')) || key.includes(k)) return v;
   }
   return { bg: 'bg-slate/10', text: 'text-slate' };
 }
 
 function getEmploymentBadge(emp: string): { bg: string; text: string } {
   return employmentBadge[emp] ?? { bg: 'bg-slate/10', text: 'text-slate' };
+}
+
+function getAvatarGradient(role: string): string {
+  const key = role.toLowerCase();
+  if (key.includes('nurse')) return 'bg-gradient-to-br from-midnight to-teal';
+  if (key.includes('senior')) return 'bg-gradient-to-br from-midnight to-amethyst';
+  if (key.includes('bank')) return 'bg-gradient-to-br from-gold to-amber-500';
+  return 'bg-gradient-to-br from-midnight to-slate-400';
+}
+
+function formatRoleName(role: string): string {
+  return role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
 export function StaffCard({
@@ -69,16 +76,17 @@ export function StaffCard({
   const initials = getInitials(name);
   const roleColor = getRoleColor(role);
   const empBadge = getEmploymentBadge(employmentType);
+  const avatarGrad = getAvatarGradient(role);
 
   return (
     <motion.div
-      className="group rounded-xl border border-slate/20 bg-white p-4 shadow-sm hover:border-gold/40 hover:shadow-md transition-all"
+      className="glass-card rounded-xl p-5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-4">
         <div
           className={cn(
-            'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold',
-            isActive ? 'bg-midnight text-white' : 'bg-slate/20 text-slate'
+            'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white shadow-sm',
+            isActive ? avatarGrad : 'bg-slate/20 text-slate'
           )}
         >
           {initials}
@@ -88,9 +96,9 @@ export function StaffCard({
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-midnight truncate">{name}</h3>
-              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
                 <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded', roleColor.bg, roleColor.text)}>
-                  {role}
+                  {formatRoleName(role)}
                 </span>
                 <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded', empBadge.bg, empBadge.text)}>
                   {employmentTypeLabel[employmentType] ?? employmentType}
@@ -104,7 +112,7 @@ export function StaffCard({
             </div>
           </div>
 
-          <div className="mt-3 space-y-1">
+          <div className="mt-3 space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs text-slate">
               <Clock className="h-3 w-3 shrink-0" />
               <span>
@@ -115,7 +123,7 @@ export function StaffCard({
 
             {floorName && (
               <div className="flex items-center gap-1.5 text-xs text-slate">
-                <ShieldCheck className="h-3 w-3 shrink-0" />
+                <Building2 className="h-3 w-3 shrink-0" />
                 <span className="px-1.5 py-0.5 rounded bg-midnight/8 text-midnight text-[10px]">{floorName}</span>
               </div>
             )}
@@ -133,18 +141,18 @@ export function StaffCard({
       </div>
 
       <div className="mt-4 flex items-center gap-2 pt-3 border-t border-slate/10">
-        <a
+        <Link
           href={`/staff/${id}`}
           className="flex-1 rounded-lg border border-slate/20 bg-white px-3 py-1.5 text-center text-xs font-medium text-midnight hover:bg-slate/5 transition-colors cursor-pointer"
         >
           View Profile
-        </a>
-        <a
+        </Link>
+        <Link
           href={`/staff/${id}/edit`}
           className="flex-1 rounded-lg bg-midnight px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-midnight/90 transition-colors cursor-pointer"
         >
           Edit
-        </a>
+        </Link>
       </div>
     </motion.div>
   );

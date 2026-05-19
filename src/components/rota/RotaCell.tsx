@@ -2,32 +2,27 @@
 
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { SHIFT_CODES } from '@/lib/constants';
-import { cellHover } from '@/lib/animations';
 
 interface RotaCellProps {
   code: string | null;
-  category?: 'work' | 'absence' | 'float' | 'empty';
   onMouseDown?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onMouseEnter?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   isActive?: boolean;
 }
 
 function getShiftColors(code: string | null): string {
-  if (!code) return 'bg-slate/5 border-slate/10 text-transparent';
+  if (!code) return 'bg-white border-slate/10 text-transparent';
 
-  if (code === 'N') return 'bg-midnight text-white border-midnight font-bold';
-  if (code === 'LD') return 'bg-gold/15 text-amber-800 border-gold/30 font-bold';
-  if (code === 'Su') return 'bg-teal/20 text-teal-700 border-teal/30 font-bold';
-
-  const shiftDef = SHIFT_CODES.find((s) => s.code === code);
-  const cat = shiftDef?.category ?? 'empty';
-
-  if (cat === 'work') return 'bg-blue-50 border-blue-200 text-midnight font-bold';
-  if (cat === 'absence') return 'bg-amethyst/10 border-amethyst/30 text-amethyst font-medium';
-  if (cat === 'float') return 'bg-teal/10 border-teal/30 text-teal font-medium';
-
-  return 'bg-slate/5 border-slate/10 text-transparent';
+  switch (code) {
+    case 'E': return 'bg-sky-100 border border-sky-200 text-sky-800 font-bold';
+    case 'L': return 'bg-violet-100 border border-violet-200 text-violet-800 font-bold';
+    case 'N': return 'bg-midnight text-white border border-midnight font-bold';
+    case 'LD': return 'bg-amber-100 border border-amber-200 text-amber-800 font-bold';
+    case 'RO': return 'bg-slate/8 border border-slate/15 text-slate/50 font-medium';
+    case 'AL': return 'bg-teal/15 border border-teal/30 text-teal font-medium';
+    case 'ML': return 'bg-amethyst/15 border border-amethyst/30 text-amethyst font-medium';
+    default: return 'bg-white border-slate/10 text-transparent';
+  }
 }
 
 export function RotaCell({ code, onMouseDown, onMouseEnter, isActive }: RotaCellProps) {
@@ -35,12 +30,12 @@ export function RotaCell({ code, onMouseDown, onMouseEnter, isActive }: RotaCell
 
   return (
     <motion.button
-      whileHover={cellHover.whileHover}
-      transition={cellHover.transition}
+      whileHover={code ? { scale: 1.05 } : {}}
+      transition={{ duration: 0.12 }}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
       className={cn(
-        "w-12 h-10 border rounded-md flex items-center justify-center text-[13px] font-bold transition-colors cursor-pointer outline-none",
+        "w-[36px] h-[36px] border rounded-md flex items-center justify-center text-[12px] font-bold transition-all cursor-pointer outline-none",
         colorClass,
         isActive && "ring-2 ring-gold border-gold relative z-10 shadow-sm"
       )}

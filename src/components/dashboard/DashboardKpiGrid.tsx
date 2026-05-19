@@ -10,6 +10,7 @@ export type KpiItem = {
   subtitle: string;
   iconName: "users" | "calendar" | "clock" | "alert-triangle";
   color: "midnight" | "teal" | "gold" | "warn" | "danger" | "slate";
+  href?: string;
 };
 
 interface DashboardKpiGridProps {
@@ -32,6 +33,7 @@ export function DashboardKpiGrid({ items }: DashboardKpiGridProps) {
             value={item.value}
             subtitle={item.subtitle}
             color={item.color}
+            href={item.href}
           />
         </motion.div>
       ))}

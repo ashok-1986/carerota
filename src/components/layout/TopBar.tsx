@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, User, Settings, LogOut } from "lucide-react";
+import { Bell, Menu, Settings, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { Sidebar } from "./Sidebar";
@@ -12,6 +12,10 @@ interface TopBarProps {
   userName?: string;
   userRole?: string;
   homeName?: string;
+}
+
+function getInitials(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase() || '';
 }
 
 export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "Manager", userRole = "Home Manager", homeName = "Marlborough Court" }: TopBarProps) {
@@ -29,18 +33,9 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
     <>
-      <header className="h-16 bg-white border-b border-slate/20 flex items-center justify-between px-6 shrink-0 z-10">
+      <header className="h-16 glass-panel border-b border-slate/20 flex items-center justify-between px-6 shrink-0 z-10">
         <div className="flex items-center gap-4">
           <button
             className="hidden lg:block p-2 hover:bg-slate/10 rounded-md transition-colors"
@@ -49,7 +44,7 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
           >
             <Menu className="w-5 h-5 text-midnight" />
           </button>
-          <h2 className="text-lg font-semibold text-midnight">{title}</h2>
+          <h2 className="text-lg font-semibold font-sans text-midnight">{title}</h2>
         </div>
 
         <div className="flex items-center gap-2">
@@ -72,25 +67,18 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
               className="flex items-center gap-2 p-1 hover:bg-slate/10 rounded-full transition-colors"
               aria-label="User menu"
             >
-              <div className="w-8 h-8 rounded-full bg-midnight flex items-center justify-center text-white font-bold font-sans text-xs">
+              <div className="w-9 h-9 rounded-full bg-midnight flex items-center justify-center text-white font-bold font-sans text-xs">
                 {getInitials(userName)}
               </div>
             </button>
 
             {userMenuOpen && (
-              <div
-                className="absolute right-0 mt-2 w-52 bg-white rounded-xl border border-slate/20 shadow-md overflow-hidden z-50"
-                style={{ minWidth: "13rem" }}
-              >
+              <div className="glass-card absolute right-0 mt-2 w-52 rounded-xl overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-slate/10">
                   <p className="text-sm font-semibold text-midnight">{userName}</p>
                   <p className="text-xs text-slate mt-0.5">{userRole}</p>
                 </div>
                 <div className="py-1">
-                  <div className="px-4 py-2 text-sm text-slate/50 flex items-center gap-2 cursor-not-allowed">
-                    <User className="w-4 h-4" />
-                    My Profile
-                  </div>
                   <Link
                     href="/settings"
                     className="px-4 py-2 text-sm text-midnight flex items-center gap-2 hover:bg-slate/5 transition-colors"

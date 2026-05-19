@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, MouseEvent } from 'react';
 import { format, isToday } from 'date-fns';
+import Link from 'next/link';
 import { RotaCell } from './RotaCell';
 import { SectionHeader } from './SectionHeader';
 import { ShiftCodePicker } from './ShiftCodePicker';
@@ -235,10 +236,10 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
 
             {section.staff.map((employee) => (
               <div key={employee.id} className="flex border-b border-slate/10 hover:bg-slate/5 transition-colors group">
-                <div className="w-48 flex-shrink-0 p-3 border-r border-slate/10 bg-white group-hover:bg-slate/5 flex flex-col justify-center sticky left-0 z-10 min-w-[160px]">
-                  <span className="text-xs font-bold text-midnight truncate">{employee.name}</span>
+                <Link href={`/staff/${employee.id}`} className="w-48 flex-shrink-0 p-3 border-r border-slate/10 bg-white group-hover:bg-slate/5 flex flex-col justify-center sticky left-0 z-10 min-w-[160px] cursor-pointer">
+                  <span className="text-xs font-bold text-midnight truncate hover:text-gold transition-colors">{employee.name}</span>
                   <span className="text-[10px] text-slate font-medium">{employee.contractedHours} hrs/wk</span>
-                </div>
+                </Link>
 
                 <div className="flex-1 flex">
                   {days.map((day, i) => {

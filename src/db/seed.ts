@@ -2,6 +2,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 config({ path: ".env.drizzle" });
 
+import { createHash } from "crypto";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
@@ -14,6 +15,21 @@ if (!connectionString) {
 
 const sql = neon(connectionString);
 const db = drizzle(sql, { schema });
+
+function hashToUUID(hash: string): string {
+  return [
+    hash.slice(0, 8),
+    hash.slice(8, 12),
+    "4" + hash.slice(13, 16),
+    ((parseInt(hash.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + hash.slice(17, 20),
+    hash.slice(20, 32),
+  ].join("-");
+}
+
+function deterministicUUID(seed: string): string {
+  const md5 = createHash("md5").update(seed).digest("hex");
+  return hashToUUID(md5);
+}
 
 async function main() {
   console.log("Seeding database...");
@@ -32,183 +48,195 @@ async function main() {
   try { await sql`TRUNCATE TABLE "homes" CASCADE`; } catch { /* ignore */ }
   try { await sql`TRUNCATE TABLE "audit_log" CASCADE`; } catch { /* ignore */ }
 
-  const [home] = await db.insert(schema.homes).values({
-    name: "Marlborough Court",
+  const homeId = deterministicUUID("home-marlborough-court");
+  await db.insert(schema.homes).values({
+    id: homeId,
+    name: "Marlborough Court Care Home",
     payrollStartDay: 19,
     budgetCapMonthly: "33500.00"
-  }).returning();
+  }).onConflictDoNothing().execute();
 
-  const insertedFloors = await db.insert(schema.homeFloors).values([
-    { homeId: home.id, name: "Kings", code: "Kg", floorType: "care_floor", sortOrder: 1 },
-    { homeId: home.id, name: "Upton / Jenkins", code: "Uj", floorType: "care_floor", sortOrder: 2 },
-    { homeId: home.id, name: "The Thames", code: "Th", floorType: "care_floor", sortOrder: 3 },
-  ]).returning();
+  const floorDefs = [
+    { seed: "floor-king-george", name: "King George", code: "Kg", floorType: "care_floor", sortOrder: 1 },
+    { seed: "floor-union-jack", name: "Union Jack", code: "Uj", floorType: "care_floor", sortOrder: 2 },
+    { seed: "floor-thames", name: "The Thames", code: "Th", floorType: "care_floor", sortOrder: 3 },
+    { seed: "floor-office", name: "Office", code: "Of", floorType: "office", sortOrder: 4 },
+    { seed: "floor-ancillary", name: "Ancillary", code: "An", floorType: "ancillary", sortOrder: 5 },
+  ];
+  const floorIds: Record<string, string> = {};
+  for (const f of floorDefs) {
+    const id = deterministicUUID(f.seed);
+    floorIds[f.code] = id;
+    await db.insert(schema.homeFloors).values({
+      id,
+      homeId,
+      name: f.name,
+      code: f.code,
+      floorType: f.floorType,
+      sortOrder: f.sortOrder,
+    }).onConflictDoNothing().execute();
+  }
 
-  const insertedShiftCodes = await db.insert(schema.shiftCodes).values([
+  const shiftCodeDefs = [
     { code: "LD", label: "Long Day", hours: "11.5", category: "work", floors: ["care", "all"] },
     { code: "E", label: "Early", hours: "8", category: "work", floors: ["care", "all"] },
     { code: "L", label: "Late", hours: "8", category: "work", floors: ["care", "all"] },
     { code: "N", label: "Night", hours: "11.5", category: "work", floors: ["care", "all"] },
     { code: "Su", label: "Supernumerary", hours: "12", category: "work", floors: ["care", "all"] },
-    { code: "RO", label: "Rest of Day", hours: "0", category: "absence", floors: ["care", "all"] },
+    { code: "RO", label: "Rest Off", hours: "0", category: "absence", floors: ["care", "all"] },
     { code: "AL", label: "Annual Leave", hours: "0", category: "absence", floors: ["all"] },
-    { code: "ML", label: "Mat Leave", hours: "0", category: "absence", floors: ["all"] },
+    { code: "ML", label: "Maternity Leave", hours: "0", category: "absence", floors: ["all"] },
     { code: "SL", label: "Sick Leave", hours: "0", category: "absence", floors: ["all"] },
     { code: "PL", label: "Paternity Leave", hours: "0", category: "absence", floors: ["all"] },
     { code: "HO", label: "Home Office", hours: "8", category: "work", floors: ["ancillary", "all"] },
     { code: "TR", label: "Training", hours: "8", category: "work", floors: ["all"] },
     { code: "M", label: "Meeting", hours: "2", category: "work", floors: ["all"] },
     { code: "OOH", label: "Out of Hours", hours: "4", category: "work", floors: ["ancillary"] },
-  ]).returning();
+  ];
+  const shiftCodeIds: Record<string, string> = {};
+  for (const s of shiftCodeDefs) {
+    const id = deterministicUUID(`shift-${s.code}`);
+    shiftCodeIds[s.code] = id;
+    await db.insert(schema.shiftCodes).values({
+      id,
+      code: s.code,
+      label: s.label,
+      hours: s.hours,
+      category: s.category,
+      floors: s.floors,
+    }).onConflictDoNothing().execute();
+  }
 
-  const sc = new Map(insertedShiftCodes.map(s => [s.code, s]));
+  interface StaffDef {
+    name: string;
+    role: string;
+    employmentType: string;
+    contractedHours: string;
+    payRateHourly: string;
+    floorCode: string;
+  }
 
-  const kingsFloor = insertedFloors[0];
-  const uptonFloor = insertedFloors[1];
-  const thamesFloor = insertedFloors[2];
+  const staffDefs: StaffDef[] = [
+    // King George — Senior Carers (4)
+    { name: "Abena Owusu", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
+    { name: "Akosua Mensah", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
+    { name: "Elizabeth Enchill", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
+    { name: "Rachel Martinez", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
 
-  const insertedStaff = await db.insert(schema.staff).values([
-    // Section: RNs / Senior Carers Day (4 staff)
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Dorcas Asante", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Rosemund Owoahene", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Rachel Martinez", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Elizabeth Enchill", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", isActive: true },
+    // King George — Caregivers (16)
+    { name: "Dorcas Asante", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
+    { name: "Rosemund Owoahene", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
+    { name: "Priya Sharma", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
+    { name: "Michael Nkrumah", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
 
-    // Section: Carer Day (6 staff)
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Joyce Mensah", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Mavis Darko", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Comfort Boateng", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Grace Amponsah", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Blessing Adjei", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Emily Davis", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
+    { name: "Joyce Mensah", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Mavis Darko", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Comfort Boateng", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Grace Amponsah", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Blessing Adjei", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Emily Davis", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Yaa Asante", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Kg" },
+    { name: "James Okafor", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Kg" },
+    { name: "Samuel Boateng", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Emmanuel Asare", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
+    { name: "Sarah Johnson", role: "home_manager", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.00", floorCode: "Kg" },
+    { name: "Kofi Mensah", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Kg" },
 
-    // Section: RNs / Senior Carers Night (3 staff)
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Priya Sharma", role: "registered_nurse", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Abena Owusu", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Akosua Mensah", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", isActive: true },
+    // Union Jack (5)
+    { name: "Nisha Patel", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Uj" },
+    { name: "Amara Diallo", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Uj" },
+    { name: "Fatima Sesay", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Uj" },
+    { name: "Jessica Wilson", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "12.50", floorCode: "Uj" },
+    { name: "David Taylor", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Uj" },
 
-    // Section: Carer Night (5 staff)
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Yaa Asante", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "James Okafor", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Samuel Boateng", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Emmanuel Asare", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Michael Nkrumah", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
+    // Thames (5)
+    { name: "Emma Thompson", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "12.50", floorCode: "Th" },
+    { name: "Priya Nair", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Th" },
+    { name: "Michael Brown", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Th" },
+    { name: "Kofi Mensah", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Th" },
+    { name: "James Anderson", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Th" },
+  ];
 
-    // Bank staff (float) + Home Manager
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Daniel Acheampong", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "1300", isActive: true },
-    { homeId: home.id, homeFloorId: kingsFloor.id, name: "Sarah Johnson", role: "home_manager", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1800", isActive: true },
+  const staffIds: string[] = [];
+  for (const s of staffDefs) {
+    const id = deterministicUUID(`staff-${s.name}-${s.floorCode}`);
+    staffIds.push(id);
+    await db.insert(schema.staff).values({
+      id,
+      homeId,
+      homeFloorId: floorIds[s.floorCode],
+      name: s.name,
+      role: s.role,
+      employmentType: s.employmentType,
+      contractedHours: s.contractedHours,
+      payRateHourly: s.payRateHourly,
+      isActive: true,
+    }).onConflictDoNothing().execute();
+  }
 
-    // Upton / Jenkins floor: 5 staff
-    { homeId: home.id, homeFloorId: uptonFloor.id, name: "Nisha Patel", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", isActive: true },
-    { homeId: home.id, homeFloorId: uptonFloor.id, name: "Amara Diallo", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: uptonFloor.id, name: "Fatima Sesay", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: uptonFloor.id, name: "Jessica Wilson", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: uptonFloor.id, name: "David Taylor", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "1300", isActive: true },
+  console.log(`  inserted ${staffDefs.length} staff`);
 
-    // Thames floor: 5 staff
-    { homeId: home.id, homeFloorId: thamesFloor.id, name: "Michael Brown", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: thamesFloor.id, name: "James Anderson", role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: thamesFloor.id, name: "Emma Thompson", role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "1250", isActive: true },
-    { homeId: home.id, homeFloorId: thamesFloor.id, name: "Priya Nair", role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", isActive: true },
-    { homeId: home.id, homeFloorId: thamesFloor.id, name: "Kofi Mensah", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "1300", isActive: true },
-  ]).returning();
+  const periodStart = new Date("2026-05-19");
+  const periodEnd = new Date("2026-06-18");
+  const rotaMonth = "2026-05-19";
 
-  console.log(`  inserted ${insertedStaff.length} staff`);
+  const N  = shiftCodeIds["N"];
+  const LD = shiftCodeIds["LD"];
+  const E  = shiftCodeIds["E"];
+  const L  = shiftCodeIds["L"];
 
-  const today = new Date();
-  const periodStart = new Date(today.getFullYear(), today.getMonth(), 19);
-  if (today.getDate() < 19) periodStart.setMonth(periodStart.getMonth() - 1);
-  const periodEnd = new Date(periodStart);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
-  periodEnd.setDate(periodEnd.getDate() - 1);
+  let count = 0;
+  for (let idx = 0; idx < staffDefs.length; idx++) {
+    const s = staffDefs[idx];
+    const staffId = staffIds[idx];
+    const floorId = floorIds[s.floorCode];
 
-  const codes = {
-    N: sc.get('N')!,
-    LD: sc.get('LD')!,
-    E: sc.get('E')!,
-    L: sc.get('L')!,
-    RO: sc.get('RO')!,
-  };
+    for (const date of getDateRange(periodStart, periodEnd)) {
+      const dow = date.getDay();
+      const dateStr = date.toISOString().split("T")[0];
+      let shiftCodeId: string | null = null;
 
-  const entriesToInsert = [];
-  for (let idx = 0; idx < insertedStaff.length; idx++) {
-    const member = insertedStaff[idx];
-    const role = member.role;
-    const empType = member.employmentType;
-
-    const isRN = role === 'registered_nurse';
-    const isSenior = role === 'senior_caregiver';
-    const isBank = empType === 'bank';
-    const isPartTime = empType === 'part_time';
-
-    for (const currentDate of getDateRange(periodStart, periodEnd)) {
-      const dow = currentDate.getDay();
-      const dateStr = currentDate.toISOString().split('T')[0];
-      let shiftCode = null;
-
-      if (isRN) {
-        // Nights Mon, Tue, Wed, Sat, Sun; RO Thu, Fri
+      if (s.role === "registered_nurse") {
         if (dow === 1 || dow === 2 || dow === 3 || dow === 6 || dow === 0) {
-          shiftCode = codes.N;
+          shiftCodeId = N;
         }
-        // else RO by default
-      } else if (isSenior) {
-        // Long Day Mon, Tue, Thu, Fri; RO Wed, Sat, Sun
+      } else if (s.role === "senior_caregiver") {
         if (dow === 1 || dow === 2 || dow === 4 || dow === 5) {
-          shiftCode = codes.LD;
+          shiftCodeId = LD;
         }
-        // else RO by default
-      } else if (isBank) {
-        // Random 2 shifts per week: 1 LD + 1 E/L based on random
-const rand = Math.floor(Math.random() * 10);
-        if (rand < 3) {
-          // Pick a day to give an LD (roughly 3 per 10 days)
-          shiftCode = codes.LD;
-        } else if (rand < 6) {
-          // Pick a day to give E or L
-          shiftCode = rand % 2 === 0 ? codes.E : codes.L;
+      } else if (s.employmentType === "bank") {
+        if (dow === 3 || dow === 6) {
+          shiftCodeId = LD;
         }
-        // else RO
-      } else if (isPartTime) {
-        // E or L on Mon, Wed, Fri only (3 days per week)
-        if (dow === 1 || dow === 3 || dow === 5) {
-          shiftCode = dow === 1 ? codes.E : codes.L;
-        }
-        // else RO
+      } else if (s.employmentType === "part_time") {
+        if (dow === 1) shiftCodeId = E;
+        else if (dow === 3) shiftCodeId = L;
+        else if (dow === 5) shiftCodeId = E;
       } else {
-        // Full-time caregiver: even staff index = pattern A, odd = pattern B
-        // Pattern A: E Mon, L Tue, RO Wed, E Thu, L Fri, RO Sat, RO Sun
-        // Pattern B: L Mon, E Tue, RO Wed, L Thu, E Fri, RO Sat, RO Sun
         const isEven = idx % 2 === 0;
-        if (dow === 1) shiftCode = isEven ? codes.E : codes.L;
-        else if (dow === 2) shiftCode = isEven ? codes.L : codes.E;
-        else if (dow === 4) shiftCode = isEven ? codes.E : codes.L;
-        else if (dow === 5) shiftCode = isEven ? codes.L : codes.E;
-        // Wed, Sat, Sun: RO by default
+        if (dow === 1) shiftCodeId = isEven ? E : L;
+        else if (dow === 2) shiftCodeId = isEven ? L : E;
+        else if (dow === 4) shiftCodeId = isEven ? E : L;
+        else if (dow === 5) shiftCodeId = isEven ? L : E;
       }
 
-      if (shiftCode) {
-        entriesToInsert.push({
-          homeId: home.id,
-          staffId: member.id,
-          homeFloorId: member.homeFloorId!,
+      if (shiftCodeId) {
+        await db.insert(schema.rotaEntries).values({
+          homeId,
+          staffId,
+          homeFloorId: floorId,
           shiftDate: dateStr,
-          shiftCodeId: shiftCode.id,
-          rotaMonth: periodStart.toISOString().split('T')[0],
+          shiftCodeId,
+          rotaMonth,
           isPublished: true,
-          createdBy: insertedStaff[0].id,
-        });
+          createdBy: staffIds[0],
+        }).onConflictDoNothing().execute();
+        count++;
       }
     }
   }
 
-  if (entriesToInsert.length > 0) {
-    for (const e of entriesToInsert) {
-      await db.insert(schema.rotaEntries).values(e);
-    }
-    console.log(`  inserted ${entriesToInsert.length} rota entries`);
-  }
-
+  console.log(`  inserted ${count} rota entries`);
   console.log("Database seeded successfully!");
   process.exit(0);
 }

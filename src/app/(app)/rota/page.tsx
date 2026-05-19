@@ -231,13 +231,11 @@ export default function RotaPage() {
         <div className="flex flex-col gap-6 mb-6">
           <CostBar
             projectedCost={costSummary.projectedCost}
-            budgetCapGbp={budgetCapGbp}
             variance={costSummary.variance}
             isOverBudget={costSummary.isOverBudget}
             capUtilisation={costSummary.capUtilisation}
             status={costSummary.status}
             scheduledHours={costSummary.scheduledHours}
-            budgetedHours={costSummary.budgetedHours}
           />
 
           <CostDashboard

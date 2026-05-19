@@ -64,6 +64,7 @@ export default async function DashboardPage() {
       subtitle: `${allStaffForHome.filter(s => s.employmentType === 'bank').length} bank workers`,
       iconName: "users",
       color: "midnight",
+      href: "/staff",
     },
     {
       title: "Rota Status",
@@ -71,6 +72,7 @@ export default async function DashboardPage() {
       subtitle: payPeriod.label,
       iconName: "calendar",
       color: isPublished ? "teal" : "warn",
+      href: "/rota",
     },
     {
       title: "Pending Leave",
@@ -78,6 +80,7 @@ export default async function DashboardPage() {
       subtitle: "awaiting approval",
       iconName: "clock",
       color: pendingLeaveCount > 0 ? "gold" : "slate",
+      href: "/leave",
     },
     {
       title: "Compliance Alerts",
@@ -85,6 +88,7 @@ export default async function DashboardPage() {
       subtitle: "0 critical",
       iconName: "alert-triangle",
       color: "slate",
+      href: "/staff",
     },
   ];
 
