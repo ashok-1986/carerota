@@ -87,15 +87,14 @@ export function LeaveCalendar({ month }: LeaveCalendarProps) {
 
   return (
     <TooltipProvider>
-      <div className="rounded-xl border border-slate/10 bg-white p-4 shadow-sm">
-        <h4 className="text-sm font-bold text-midnight mb-3">{format(month, "MMMM yyyy")}</h4>
-
-        <div className="grid grid-cols-7 gap-0">
-          {dayNames.map((name) => (
-            <div key={name} className="text-[10px] font-medium text-slate/60 text-center py-1">
-              {name}
-            </div>
-          ))}
+      <div className="glass-card rounded-2xl p-5 border border-slate/15">
+        <div className="rounded-xl bg-white/50 overflow-hidden border border-slate/10">
+          <div className="grid grid-cols-7 gap-0">
+            {dayNames.map((name) => (
+              <div key={name} className="text-[10px] font-semibold text-slate uppercase tracking-wider text-center py-2.5 bg-midnight/5 border-b border-slate/10">
+                {name}
+              </div>
+            ))}
 
           {weeks.map((week, wi) =>
             week.map((day, di) => {
@@ -151,13 +150,14 @@ export function LeaveCalendar({ month }: LeaveCalendarProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-slate/10">
-          {legendItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-1">
-              <span className={cn("inline-block size-2 rounded-full", item.color)} />
-              <span className="text-[10px] text-slate">{item.label}</span>
-            </div>
-          ))}
+        <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate/10">
+            {legendItems.map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <span className={cn("inline-block size-2.5 rounded-full", item.color)} />
+                <span className="text-[11px] text-slate font-medium">{item.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </TooltipProvider>

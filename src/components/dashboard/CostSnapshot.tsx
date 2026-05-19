@@ -1,8 +1,7 @@
 "use client";
 
-import { formatCurrency } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { TrendingUp, Minus } from "lucide-react";
+import { formatCurrency, cn } from "@/lib/utils";
+import { CheckCircle, AlertTriangle, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -34,49 +33,57 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapsho
   const isOver = variance > 0;
   const isWarning = utilisation >= 85 && !isOver;
 
-  const BarIcon = isOver ? TrendingUp : isWarning ? TrendingUp : Minus;
   const barColor = isOver ? "bg-danger" : isWarning ? "bg-warn" : "bg-teal";
 
+  const statusBg = isOver ? "bg-danger/10 text-danger border-danger/20" : isWarning ? "bg-warn/10 text-warn border-warn/20" : "bg-teal/10 text-teal border-teal/20";
+  const StatusIcon = isOver ? Flame : isWarning ? AlertTriangle : CheckCircle;
+
   return (
-    <div className="glass-panel border border-slate/20 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-base font-semibold text-midnight">Cost Snapshot</h3>
-          <p className="text-xs text-slate mt-0.5">{homeName} · Current Period</p>
+    <div className="glass-card rounded-2xl p-6 border border-slate/15">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-midnight/8 flex items-center justify-center">
+            <span className="text-sm font-display font-bold text-midnight">£</span>
+          </div>
+          <div>
+            <h3 className="text-base font-display font-semibold text-midnight">Cost Snapshot</h3>
+            <p className="text-xs text-slate mt-0.5">{homeName} · Current Period</p>
+          </div>
         </div>
-        <div className={cn("p-2 rounded-lg", isOver ? "bg-danger/10" : isWarning ? "bg-warn/10" : "bg-teal/10")}>
-          <BarIcon className={cn("w-4 h-4", isOver ? "text-danger" : isWarning ? "text-warn" : "text-teal")} />
+        <div className={cn("flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold", statusBg)}>
+          <StatusIcon size={12} />
+          <span className="capitalize">{status}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div>
-          <p className="text-xs text-slate">Projected Cost</p>
-          <p className={cn("text-xl font-bold mt-1", isOver ? "text-danger" : "text-midnight")}>
+      <div className="grid grid-cols-3 gap-5 mb-5">
+        <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
+          <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Projected Cost</p>
+          <p className={cn("text-xl font-display font-bold tracking-tight", isOver ? "text-danger" : "text-midnight")}>
             {formatCurrency(projectedCost)}
           </p>
         </div>
-        <div>
-          <p className="text-xs text-slate">Budget Cap</p>
-          <p className="text-xl font-bold text-midnight mt-1">{formatCurrency(budgetCap)}</p>
+        <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
+          <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Budget Cap</p>
+          <p className="text-xl font-display font-bold text-midnight tracking-tight">{formatCurrency(budgetCap)}</p>
         </div>
-        <div>
-          <p className="text-xs text-slate">Variance</p>
-          <p className={cn("text-xl font-bold mt-1", isOver ? "text-danger" : "text-teal")}>
-            {isOver ? "+" : ""}{formatCurrency(variance)}
+        <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
+          <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Variance</p>
+          <p className={cn("text-xl font-display font-bold tracking-tight", isOver ? "text-danger" : "text-teal")}>
+            {isOver ? "+" : ""}{formatCurrency(Math.abs(variance))}
           </p>
-          <p className="text-xs text-slate/60 mt-0.5">{isOver ? "over budget" : "under budget"}</p>
+          <p className="text-[10px] text-slate/60 mt-1">{isOver ? "over budget" : "under budget"}</p>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-slate">Budget Utilisation</span>
-          <span className={cn("font-semibold", isOver ? "text-danger" : isWarning ? "text-warn" : "text-teal")}>
+      <div className="space-y-2.5">
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-slate font-medium">Budget Utilisation</span>
+          <span className={cn("font-display font-bold text-base", isOver ? "text-danger" : isWarning ? "text-warn" : "text-teal")}>
             {utilisation.toFixed(1)}%
           </span>
         </div>
-        <div className="h-3 bg-slate/10 rounded-full overflow-hidden">
+        <div className="h-3 bg-slate/8 rounded-full overflow-hidden border border-slate/10">
           <motion.div
             className={cn("h-full rounded-full", barColor)}
             initial={{ scaleX: 0 }}
@@ -85,9 +92,11 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName }: CostSnapsho
             style={{ transformOrigin: "left" }}
           />
         </div>
-        <p className="text-xs text-slate/60 text-right">
-          {formatCurrency(projectedCost)} of {formatCurrency(budgetCap)}
-        </p>
+        <div className="flex justify-between items-center text-[11px] text-slate/50 font-medium">
+          <span>£0</span>
+          <span>{formatCurrency(projectedCost)} of {formatCurrency(budgetCap)}</span>
+          <span>{formatCurrency(budgetCap)}</span>
+        </div>
       </div>
     </div>
   );

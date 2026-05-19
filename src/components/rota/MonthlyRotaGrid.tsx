@@ -232,7 +232,11 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
       <div className="overflow-auto max-h-[600px] custom-scrollbar pb-20">
         {sections.map((section) => (
           <div key={section.title}>
-            <SectionHeader title={section.title} count={section.staff.length} />
+            <SectionHeader
+              title={section.title}
+              count={section.staff.length}
+              floorId={section.staff[0]?.homeFloorId ?? undefined}
+            />
 
             {section.staff.map((employee) => (
               <div key={employee.id} className="flex border-b border-slate/10 hover:bg-slate/5 transition-colors group">

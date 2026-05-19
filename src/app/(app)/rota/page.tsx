@@ -39,6 +39,8 @@ export default function RotaPage() {
   const [selectedFloorId, setSelectedFloorId] = useState<string | undefined>(undefined);
   const activeFloorId = selectedFloorId || floors[0]?.id;
 
+  const staffCountByFloor: Record<string, number> = {};
+
   const [isPatternSetupOpen, setIsPatternSetupOpen] = useState(false);
   const [isPublishReviewOpen, setIsPublishReviewOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -52,6 +54,10 @@ export default function RotaPage() {
   );
 
   const { mutate: publishRota, isPending: isPublishing } = usePublishRota();
+
+  for (const sec of (data?.sections ?? []) as { floorId?: string; staff?: unknown[] }[]) {
+    if (sec.floorId) staffCountByFloor[sec.floorId] = sec.staff?.length ?? 0;
+  }
 
   const handlePreviousPeriod = () => {
     setReferenceDate((prev) => addMonths(prev, -1));
@@ -205,6 +211,7 @@ export default function RotaPage() {
             floors={floors}
             activeFloorId={activeFloorId || ''}
             onTabChange={setSelectedFloorId}
+            staffCountByFloor={staffCountByFloor}
           />
         ) : (
           <div className="h-10 w-48 bg-slate/5 rounded-lg animate-pulse" />

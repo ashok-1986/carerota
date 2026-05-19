@@ -70,20 +70,23 @@ export function DashboardKpiCard({ iconName, title, value, subtitle, color, href
   return (
     <div
       className={cn(
-        "glass-card rounded-xl p-5 flex items-start gap-4 transition-all duration-200",
-        href ? "cursor-pointer hover:border-gold/30 hover:shadow-md" : ""
+        "glass-card rounded-2xl p-5 flex items-start gap-4 transition-all duration-200 group",
+        href ? "cursor-pointer hover:border-gold/30 hover:shadow-lg hover:-translate-y-0.5" : ""
       )}
       onClick={href ? () => router.push(href) : undefined}
     >
-      <div className={cn("p-3 rounded-lg shrink-0", iconBgMap[color])}>
+      <div className={cn("p-3 rounded-xl shrink-0 transition-colors group-hover:scale-105", iconBgMap[color])}>
         <Icon className={cn("w-5 h-5", colorMap[color])} />
       </div>
-      <div className="min-w-0">
-        <p className="text-sm text-slate font-medium">{title}</p>
-        <p className={cn("text-3xl font-bold mt-0.5", colorMap[color])}>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-slate font-medium uppercase tracking-wider">{title}</p>
+        <p className={cn("text-3xl font-display font-bold mt-1 tracking-tight", colorMap[color])}>
           {isNumeric ? <AnimatedCounter target={numeric} /> : value}
         </p>
-        <p className="text-xs text-slate/70 mt-1 truncate">{subtitle}</p>
+        <div className="flex items-center gap-1 mt-1.5">
+          <div className={cn("w-1 h-1 rounded-full", color === 'gold' ? 'bg-gold' : color === 'teal' ? 'bg-teal' : color === 'warn' ? 'bg-warn' : 'bg-slate')} />
+          <p className="text-xs text-slate/70">{subtitle}</p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Menu, Settings, LogOut } from "lucide-react";
+import { Bell, Settings, LogOut } from "lucide-react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { Sidebar } from "./Sidebar";
@@ -35,45 +35,40 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
 
   return (
     <>
-      <header className="h-16 glass-panel border-b border-slate/20 flex items-center justify-between px-6 shrink-0 z-10">
-        <div className="flex items-center gap-4">
-          <button
-            className="hidden lg:block p-2 hover:bg-slate/10 rounded-md transition-colors"
-            onClick={() => setMobileMenuOpen(true)}
-            aria-label="Open menu"
-          >
-            <Menu className="w-5 h-5 text-midnight" />
-          </button>
-          <h2 className="text-lg font-semibold font-sans text-midnight">{title}</h2>
+      <header className="h-16 glass-card border-b border-slate/15 flex items-center justify-between px-6 shrink-0 z-10 rounded-none">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-5 bg-gold rounded-full" />
+          <h2 className="text-lg font-display font-semibold text-midnight tracking-tight">{title}</h2>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Link
             href="/leave"
-            className="relative p-2 hover:bg-slate/10 rounded-full transition-colors"
+            className="relative p-2 hover:bg-slate/5 rounded-xl transition-all"
             aria-label="Notifications"
           >
             <Bell className="w-5 h-5 text-slate" />
             {pendingLeaveCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-gold text-midnight text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 w-5 h-5 bg-gold text-midnight text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
                 {pendingLeaveCount > 9 ? "9+" : pendingLeaveCount}
               </span>
             )}
           </Link>
 
-          <div className="relative ml-2" ref={menuRef}>
+          <div className="relative" ref={menuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-2 p-1 hover:bg-slate/10 rounded-full transition-colors"
+              className="flex items-center gap-2.5 p-1.5 hover:bg-slate/5 rounded-xl transition-colors border border-transparent hover:border-slate/15"
               aria-label="User menu"
             >
-              <div className="w-9 h-9 rounded-full bg-midnight flex items-center justify-center text-white font-bold font-sans text-xs">
+              <div className="w-9 h-9 rounded-xl bg-midnight flex items-center justify-center text-white font-bold font-sans text-xs shadow-sm">
                 {getInitials(userName)}
               </div>
+              <span className="hidden sm:block text-sm font-medium text-midnight">{userName.split(' ')[0]}</span>
             </button>
 
             {userMenuOpen && (
-              <div className="glass-card absolute right-0 mt-2 w-52 rounded-xl overflow-hidden z-50">
+              <div className="glass-card absolute right-0 mt-2 w-52 rounded-xl overflow-hidden z-50 border border-slate/15">
                 <div className="px-4 py-3 border-b border-slate/10">
                   <p className="text-sm font-semibold text-midnight">{userName}</p>
                   <p className="text-xs text-slate mt-0.5">{userRole}</p>
@@ -81,15 +76,15 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
                 <div className="py-1">
                   <Link
                     href="/settings"
-                    className="px-4 py-2 text-sm text-midnight flex items-center gap-2 hover:bg-slate/5 transition-colors"
+                    className="px-4 py-2.5 text-sm text-midnight flex items-center gap-2.5 hover:bg-slate/5 transition-colors"
                     onClick={() => setUserMenuOpen(false)}
                   >
-                    <Settings className="w-4 h-4" />
+                    <Settings className="w-4 h-4 text-slate" />
                     Settings
                   </Link>
                   <button
                     onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="w-full px-4 py-2 text-sm text-danger flex items-center gap-2 hover:bg-slate/5 transition-colors text-left"
+                    className="w-full px-4 py-2.5 text-sm text-danger flex items-center gap-2.5 hover:bg-danger/5 transition-colors text-left"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign out

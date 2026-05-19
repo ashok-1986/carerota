@@ -69,19 +69,25 @@ export default function LeavePage() {
   ] as const;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-midnight font-sans">Leave Management</h1>
-          <p className="text-sm text-slate mt-1 font-sans">
-            Approve, decline, and track statutory annual leave balances and team absences.
-          </p>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-1 h-7 bg-gold rounded-full" />
+            <h1 className="text-3xl font-display font-semibold text-midnight tracking-tight">Leave Management</h1>
+          </div>
+          <div className="flex items-center gap-2 ml-4">
+            <div className="w-2 h-2 rounded-full bg-teal animate-pulse" />
+            <p className="text-sm font-sans text-slate">
+              Approve, decline, and track statutory annual leave balances and team absences.
+            </p>
+          </div>
         </div>
       </div>
 
       <SummaryStats />
 
-      <div className="flex border-b border-slate/20">
+      <div className="glass-card rounded-2xl p-1 flex gap-1 bg-white/50 border border-slate/15 w-fit">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -89,13 +95,14 @@ export default function LeavePage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all font-sans cursor-pointer ${
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-all font-sans cursor-pointer",
                 isActive
-                  ? "border-midnight text-midnight font-bold"
-                  : "border-transparent text-slate hover:text-midnight"
-              }`}
+                  ? "bg-midnight text-white shadow-sm"
+                  : "text-slate hover:text-midnight hover:bg-slate/5"
+              )}
             >
-              <Icon className="h-4.5 w-4.5" />
+              <Icon className="h-4 w-4" />
               {tab.label}
             </button>
           );
@@ -104,12 +111,15 @@ export default function LeavePage() {
 
       <div className="transition-all duration-300">
         {activeTab === "calendar" && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-midnight">
-                {calendarMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-              </h3>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-display font-semibold text-midnight">
+                  {calendarMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+                </h3>
+                <span className="text-xs text-slate/50 bg-slate/5 px-2 py-0.5 rounded-full">Team Leave</span>
+              </div>
+              <div className="flex items-center gap-1 bg-white border border-slate/15 rounded-xl p-1">
                 <button
                   onClick={() => {
                     const prev = new Date(calendarMonth);
@@ -122,7 +132,7 @@ export default function LeavePage() {
                 </button>
                 <button
                   onClick={() => setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}
-                  className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-slate hover:bg-slate/10 transition-colors"
+                  className="cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold text-midnight hover:bg-slate/10 transition-colors"
                 >
                   Today
                 </button>
