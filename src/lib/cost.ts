@@ -2,6 +2,15 @@
 import { SHIFT_CODES } from './constants';
 import type { CostStaff, CostEntry, CostSnapshot } from '@/types/cost';
 
+/** Normalise pay rate: if stored as pounds (>100), convert to pence by ×100.
+ *  Neon/Drizzle decimal columns return numbers, not strings.
+ *  Rates > 1000 are clearly in pounds; ≤ 1000 are already in pence.
+ */
+function toPence(rate: number): number {
+  if (!rate || rate <= 0) return 0;
+  return rate > 1000 ? Math.round(rate) : Math.round(rate * 100);
+}
+
 /** Helper to retrieve SHIFT_CODES entry */
 function getShiftInfo(code: string | null) {
   if (!code) return null;
@@ -21,7 +30,7 @@ export function calcProjectedCost(
     if (shift?.category !== 'work') continue;
     const staffMember = staffMap.get(entry.staffId);
     if (!staffMember?.payRateHourly) continue;
-    const rate = staffMember.payRateHourly; // already pence per hour
+    const rate = toPence(staffMember.payRateHourly); // normalise to pence
     const hours = shift.hours;
     totalPence += rate * hours;
   }
@@ -70,7 +79,7 @@ export function calcCostByRole(
     if (shift?.category !== 'work') continue;
     const staffMember = staffMap.get(entry.staffId);
     if (!staffMember?.payRateHourly) continue;
-    const rate = staffMember.payRateHourly;
+    const rate = toPence(staffMember.payRateHourly);
     const cost = rate * shift.hours;
     const role = staffMember.role || 'unknown';
     costs[role] = (costs[role] ?? 0) + cost;

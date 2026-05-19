@@ -48,7 +48,7 @@ export function CostBar({
     },
   };
 
-  const scaleX = useMotionValue(0);
+  const scaleX = useMotionValue(Math.min(capUtilisation, 1));
   const springX = useSpring(scaleX, { stiffness: 80, damping: 20 });
   const barRef = useRef<HTMLDivElement>(null);
 
@@ -66,6 +66,7 @@ export function CostBar({
 
   const currentStatus = statusColors[status];
   const StatusIcon = currentStatus.icon;
+  const clampedPercent = Math.min(capUtilisation * 100, 100);
 
   return (
     <div className="bg-white border border-slate/15 rounded-xl p-6 shadow-sm flex flex-col gap-5 transition-all hover:shadow-md">
@@ -133,7 +134,7 @@ export function CostBar({
               currentStatus.bar,
               currentStatus.glow
             )}
-            style={{ width: '0%' }}
+            style={{ width: `${clampedPercent}%` }}
           />
         </div>
 

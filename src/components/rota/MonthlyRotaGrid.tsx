@@ -14,7 +14,7 @@ type Section = { title: string; staff: StaffInfo[] };
 interface MonthlyRotaGridProps {
   days: Date[];
   sections: Section[];
-  initialEntries?: Array<{ staffId: string; shiftDate: string; shiftCodeId: string }>;
+  initialEntries?: Array<{ staffId: string; shiftDate: string; shiftCodeId?: string; code?: string | null; homeFloorId?: string }>;
   homeId: string;
 }
 
@@ -37,9 +37,17 @@ function getRotaMonthDate(dateStr: string): string {
 
 export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }: MonthlyRotaGridProps) {
   useEffect(() => {
-    window.onerror = (msg, src, line, col, error) => {
-      console.error('Window error on rota page:', { msg, src, line, col, error });
+    const handler = (event: ErrorEvent) => {
+      console.error('Window error on rota page:', {
+        msg: event.message,
+        src: event.filename,
+        line: event.lineno,
+        col: event.colno,
+        error: event.error,
+      });
     };
+    window.addEventListener('error', handler);
+    return () => window.removeEventListener('error', handler);
   }, []);
 
   const [pickerState, setPickerState] = useState<{
@@ -63,7 +71,7 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     const nextData: Record<string, string> = {};
     initialEntries.forEach(entry => {
       const key = `${entry.staffId}_${entry.shiftDate}`;
-      nextData[key] = entry.shiftCodeId;
+      nextData[key] = entry.code ?? '';
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCellData(nextData);

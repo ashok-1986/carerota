@@ -28,7 +28,9 @@ export function AnimatedNumber({ value, className, format }: AnimatedNumberProps
     return unsubscribe;
   }, [spring, format]);
 
-  return <motion.span ref={displayRef} className={className}>{format ? format(0) : '0'}</motion.span>;
+  const initial = format ? format(value) : value.toString();
+
+  return <motion.span ref={displayRef} className={className}>{initial}</motion.span>;
 }
 
 interface AnimatedKpiValueProps {
@@ -37,18 +39,19 @@ interface AnimatedKpiValueProps {
 }
 
 export function AnimatedKpiValue({ value, className }: AnimatedKpiValueProps) {
-  const numeric = parseFloat(value.replace(/[^0-9.-]/g, ''));
+  const match = value.match(/^([^0-9]*)(-?\d+(?:\.\d+)?)([^0-9]*)$/);
+  const numeric = match ? parseFloat(match[2]) : NaN;
   const isNumeric = !isNaN(numeric);
+  const prefix = match ? match[1] : '';
+  const suffix = match ? match[3] : '';
 
   if (!isNumeric) {
     return <span className={className}>{value}</span>;
   }
 
-  const hasNonNumeric = value !== numeric.toString();
-  const suffix = hasNonNumeric ? value.match(/[^0-9]*$/)?.[0] ?? '' : '';
-
   return (
     <span className={className}>
+      {prefix}
       <AnimatedCountUp target={numeric} />
       {suffix}
     </span>
@@ -73,5 +76,5 @@ function AnimatedCountUp({ target }: { target: number }) {
     return unsubscribe;
   }, [spring]);
 
-  return <motion.span ref={displayRef}>0</motion.span>;
+  return <motion.span ref={displayRef}>{target.toLocaleString()}</motion.span>;
 }

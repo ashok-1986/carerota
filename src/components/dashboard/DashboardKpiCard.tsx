@@ -39,7 +39,8 @@ const iconBgMap = {
 };
 
 function AnimatedValue({ value }: { value: string }) {
-  const numeric = parseFloat(value.replace(/[^0-9.-]/g, ''));
+  const matched = value.match(/-?\d+(?:\.\d+)?/);
+  const numeric = matched ? parseFloat(matched[0]) : NaN;
   const isNumeric = !isNaN(numeric) && isFinite(numeric);
 
   const motionVal = useMotionValue(0);
@@ -65,7 +66,7 @@ function AnimatedValue({ value }: { value: string }) {
     return <span>{value}</span>;
   }
 
-  return <motion.span ref={displayRef}>0</motion.span>;
+  return <motion.span ref={displayRef}>{Math.round(numeric)}</motion.span>;
 }
 
 export function DashboardKpiCard({ iconName, title, value, subtitle, color }: KpiCardProps) {

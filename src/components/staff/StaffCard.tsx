@@ -42,7 +42,7 @@ const employmentBadge: Record<string, { bg: string; text: string }> = {
 };
 
 function getInitials(name: string): string {
-  return name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
+  return name.trim().split(/\s+/).filter(Boolean).map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase() || '';
 }
 
 function getRoleColor(role: string): { bg: string; text: string } {
