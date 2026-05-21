@@ -1,7 +1,10 @@
 import { getStaffById, getStaffRotaEntries } from '@/db/queries/staff';
+import { getFloors } from '@/db/queries/floors';
+import { auth } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Clock, MapPin, PoundSterling } from 'lucide-react';
+import { EditStaffSheet } from '@/components/staff/EditStaffSheet';
 
 const roleLabels: Record<string, string> = {
   registered_nurse: 'Registered Nurse',
@@ -26,7 +29,14 @@ function formatRole(role: string): string {
 
 export default async function StaffProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const member = await getStaffById(id);
+  const session = await auth();
+  
+  if (!session?.user?.homeId) notFound();
+
+  const [member, floors] = await Promise.all([
+    getStaffById(id),
+    getFloors(session.user.homeId)
+  ]);
 
   if (!member) notFound();
 
@@ -65,13 +75,16 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
                   )}
                 </div>
               </div>
-              <Link
-                href={`/rota?staff=${member.id}`}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-midnight rounded-xl text-sm font-semibold hover:bg-gold/90 transition-colors"
-              >
-                <Calendar className="size-4" />
-                View Rota
-              </Link>
+              <div className="flex items-center gap-2">
+                <EditStaffSheet member={member} floors={floors} />
+                <Link
+                  href={`/rota?staff=${member.id}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-midnight rounded-xl text-sm font-semibold hover:bg-gold/90 transition-colors"
+                >
+                  <Calendar className="size-4" />
+                  View Rota
+                </Link>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6">

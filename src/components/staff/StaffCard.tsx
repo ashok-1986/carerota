@@ -148,7 +148,7 @@ export function StaffCard({
           View Profile
         </Link>
         <Link
-          href={`/staff/${id}/edit`}
+          href={`/staff/${id}`}
           className="flex-1 rounded-lg bg-midnight px-3 py-1.5 text-center text-xs font-medium text-white hover:bg-midnight/90 transition-colors cursor-pointer"
         >
           Edit

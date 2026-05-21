@@ -1,12 +1,15 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { staff, leaveRequests, rotaEntries, homes, shiftCodes, additionalCosts } from "@/db/schema";
+import { staff, leaveRequests, homes, shiftCodes, additionalCosts } from "@/db/schema";
 import { eq, and, count, sql } from "drizzle-orm";
 import { getPayPeriod } from "@/lib/utils";
 import { DashboardKpiGrid, type KpiItem } from "@/components/dashboard/DashboardKpiGrid";
 import { CostSnapshot } from "@/components/dashboard/CostSnapshot";
-import { Calendar, CalendarOff, ChevronRight, Users } from "lucide-react";
+import { Calendar, ChevronRight, Users, Building2, UserCircle2, Briefcase } from "lucide-react";
 import Link from "next/link";
+import { getStaffByHome } from "@/db/queries/staff";
+import { getRotaEntriesForPeriod } from "@/db/queries/rota";
+import { Card } from "@/components/ui/card";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -28,20 +31,16 @@ export default async function DashboardPage() {
   ]);
 
   const activeStaffCount = Number(activeStaffRows[0]?.count ?? 0);
-
   const pendingLeaveCount = Number(pendingLeaveRows[0]?.count ?? 0);
 
   const payPeriod = getPayPeriod(Number(home?.payrollStartDay ?? 19));
+  const periodStart = payPeriod.start.toISOString().slice(0, 10);
+  const periodEnd = payPeriod.end.toISOString().slice(0, 10);
 
-  const allStaffForHome = await db.select({ id: staff.id, employmentType: staff.employmentType })
-    .from(staff).where(eq(staff.homeId, homeId));
+  const allStaff = await getStaffByHome(homeId);
+  const rotaEntriesList = await getRotaEntriesForPeriod(homeId, periodStart, periodEnd);
 
-  const allEntries = await db.select({ isPublished: rotaEntries.isPublished })
-    .from(rotaEntries)
-    .where(eq(rotaEntries.homeId, homeId))
-    .limit(1);
-
-  const isPublished = allEntries.length > 0 && allEntries[0].isPublished;
+  const isPublished = rotaEntriesList.length > 0 && rotaEntriesList[0].isPublished;
 
   const budgetCap = Number(home?.budgetCapMonthly ?? 33500);
 
@@ -55,10 +54,10 @@ export default async function DashboardPage() {
     WHERE re.home_id = ${homeId}
     AND re.is_published = true
   `);
-  const projectedCostPence = Number(projectedCostResult.rows[0]?.total ?? 0);
-  const projectedCost = projectedCostPence / 100;
+  const projectedCostTotal = Number(projectedCostResult.rows[0]?.total ?? 0);
+  const projectedCost = projectedCostTotal;
 
-  const rotaMonth = payPeriod.start.toISOString().slice(0, 10);
+  const rotaMonth = periodStart;
   const additionalRows = await db
     .select({ amount: additionalCosts.amount })
     .from(additionalCosts)
@@ -69,11 +68,42 @@ export default async function DashboardPage() {
   const additionalCostTotal = additionalRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
   const totalCost = projectedCost + additionalCostTotal;
 
+  // Group staff and shifts by floor
+  const staffByFloor = allStaff.reduce((acc, s) => {
+    if (!s.isActive) return acc;
+    const floor = s.floorName || 'Unassigned';
+    if (!acc[floor]) acc[floor] = { staffCount: 0, workShifts: 0, coveragePercent: 0 };
+    acc[floor].staffCount++;
+    return acc;
+  }, {} as Record<string, { staffCount: number, workShifts: number, coveragePercent: number }>);
+
+  rotaEntriesList.forEach(entry => {
+    if (entry.category === 'work') {
+      const staffMember = allStaff.find(s => s.id === entry.staffId);
+      const floor = staffMember?.floorName || 'Unassigned';
+      if (staffByFloor[floor]) {
+        staffByFloor[floor].workShifts++;
+      }
+    }
+  });
+
+  Object.keys(staffByFloor).forEach(floor => {
+    const data = staffByFloor[floor];
+    // Assuming 15 expected shifts per staff member in a 4-week period
+    const expected = data.staffCount * 15; 
+    data.coveragePercent = expected > 0 ? Math.min(100, Math.round((data.workShifts / expected) * 100)) : 0;
+  });
+
+  // Staff Status
+  const fullTimeCount = allStaff.filter(s => s.employmentType === 'full_time' && s.isActive).length;
+  const partTimeCount = allStaff.filter(s => s.employmentType === 'part_time' && s.isActive).length;
+  const bankCount = allStaff.filter(s => s.employmentType === 'bank' && s.isActive).length;
+
   const kpiItems: KpiItem[] = [
     {
       title: "Active Staff",
       value: activeStaffCount.toString(),
-      subtitle: `${allStaffForHome.filter(s => s.employmentType === 'bank').length} bank workers`,
+      subtitle: `${bankCount} bank workers`,
       iconName: "users",
       color: "midnight",
       href: "/staff",
@@ -105,7 +135,7 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="p-6 lg:p-8 space-y-8">
+    <div className="p-6 lg:p-8 space-y-8 max-w-[1400px] mx-auto">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3 mb-2">
@@ -124,8 +154,47 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      {/* KPI Cards */}
       <DashboardKpiGrid items={kpiItems} />
 
+      {/* Floor Coverage Summary */}
+      <div className="space-y-4">
+        <h2 className="text-lg font-display font-semibold text-midnight">Floor Coverage Summary</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Object.entries(staffByFloor).map(([floorName, stats]) => (
+            <Card key={floorName} className="p-4 bg-white/60 border-slate/10 hover:shadow-md transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-slate/60" />
+                  <h3 className="text-sm font-bold text-midnight truncate" title={floorName}>{floorName}</h3>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-slate mb-0.5">Staff Assigned</p>
+                  <p className="text-xl font-bold text-midnight">{stats.staffCount}</p>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-slate">Coverage</span>
+                    <span className={`font-medium ${stats.coveragePercent > 80 ? 'text-teal' : stats.coveragePercent > 50 ? 'text-amber-500' : 'text-danger'}`}>
+                      {stats.workShifts} shifts
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate/10 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full ${stats.coveragePercent > 80 ? 'bg-teal' : stats.coveragePercent > 50 ? 'bg-amber-500' : 'bg-danger'}`}
+                      style={{ width: `${stats.coveragePercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Cost & Staff Status */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2">
           <CostSnapshot
@@ -137,40 +206,65 @@ export default async function DashboardPage() {
           />
         </div>
 
-        <div className="glass-card rounded-xl p-5 space-y-4">
-          <h2 className="text-sm font-bold text-midnight uppercase tracking-wider">Quick Actions</h2>
-          <div className="space-y-2.5">
-            <Link href="/rota" className="group flex items-center gap-3 w-full rounded-lg bg-midnight hover:bg-midnight/90 px-4 py-3.5 transition-all">
-              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-white" />
+        <div className="space-y-6">
+          <Card className="p-5 bg-white/60 border-slate/10">
+            <h2 className="text-sm font-bold text-midnight uppercase tracking-wider mb-4">Staff Status</h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-teal/5 border border-teal/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-teal/10">
+                    <UserCircle2 className="w-4 h-4 text-teal" />
+                  </div>
+                  <span className="text-sm font-semibold text-midnight">Full-time</span>
+                </div>
+                <span className="text-lg font-bold text-teal">{fullTimeCount}</span>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-white">Build This Month&apos;s Rota</p>
-                <p className="text-xs text-white/50">Plan & publish schedule</p>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-amethyst/5 border border-amethyst/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amethyst/10">
+                    <Briefcase className="w-4 h-4 text-amethyst" />
+                  </div>
+                  <span className="text-sm font-semibold text-midnight">Part-time</span>
+                </div>
+                <span className="text-lg font-bold text-amethyst">{partTimeCount}</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-white/40 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-            <Link href="/leave" className="group flex items-center gap-3 w-full rounded-lg border border-gold/30 bg-gold/5 hover:bg-gold/10 px-4 py-3.5 transition-all">
-              <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center">
-                <CalendarOff className="w-4 h-4 text-gold" />
+              <div className="flex items-center justify-between p-3 rounded-xl bg-gold/5 border border-gold/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gold/10">
+                    <Users className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <span className="text-sm font-semibold text-midnight">Bank Workers</span>
+                </div>
+                <span className="text-lg font-bold text-amber-600">{bankCount}</span>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-midnight">Manage Leave Requests</p>
-                <p className="text-xs text-slate">{pendingLeaveCount > 0 ? `${pendingLeaveCount} awaiting review` : 'All clear'}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate/50 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-            <Link href="/staff" className="group flex items-center gap-3 w-full rounded-lg border border-slate/20 bg-white hover:bg-pearl px-4 py-3.5 transition-all">
-              <div className="w-8 h-8 rounded-lg bg-midnight/5 flex items-center justify-center">
-                <Users className="w-4 h-4 text-midnight" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-midnight">Staff Directory</p>
-                <p className="text-xs text-slate">{activeStaffCount} members</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate/50 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
+            </div>
+          </Card>
+
+          <Card className="p-5 bg-white/60 border-slate/10 space-y-4">
+            <h2 className="text-sm font-bold text-midnight uppercase tracking-wider">Quick Actions</h2>
+            <div className="space-y-2.5">
+              <Link href="/rota" className="group flex items-center gap-3 w-full rounded-lg bg-midnight hover:bg-midnight/90 px-4 py-3.5 transition-all">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white">Build This Month&apos;s Rota</p>
+                  <p className="text-xs text-white/50">Plan & publish schedule</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-white/40 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link href="/staff" className="group flex items-center gap-3 w-full rounded-lg border border-slate/20 bg-white hover:bg-pearl px-4 py-3.5 transition-all">
+                <div className="w-8 h-8 rounded-lg bg-midnight/5 flex items-center justify-center">
+                  <Users className="w-4 h-4 text-midnight" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-midnight">Staff Directory</p>
+                  <p className="text-xs text-slate">{activeStaffCount} members</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate/50 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </Card>
         </div>
       </div>
     </div>
