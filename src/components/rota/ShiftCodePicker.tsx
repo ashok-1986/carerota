@@ -66,9 +66,9 @@ export function ShiftCodePicker({ isOpen, onSelect, onClose, position }: ShiftCo
                 onSelect(null);
                 onClose();
               }}
-              className="col-span-3 mt-1 py-2 text-xs font-medium text-slate border border-dashed border-slate/30 rounded-md hover:bg-slate/5 transition-colors"
+              className="col-span-3 mt-1 py-2 text-xs font-medium text-red-600 border border-dashed border-red-200 bg-red-50 hover:bg-red-100 rounded-md transition-colors"
             >
-              Clear Shift
+              Clear selected cells
             </button>
           </motion.div>
         </>

@@ -2,16 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { SHIFT_CODES } from '@/lib/constants';
-import { Loader2, Calendar, Save, Info } from 'lucide-react';
+import { Loader2, Calendar, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +25,7 @@ interface PatternSetupProps {
   isOpen: boolean;
   onClose: () => void;
   staffList: Staff[];
+  floorName?: string;
 }
 
 const DAYS_OF_WEEK = [
@@ -39,15 +38,17 @@ const DAYS_OF_WEEK = [
   { value: 7, label: 'Sun' },
 ];
 
-export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) {
+function getInitials(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).map((n) => n[0] ?? '').slice(0, 2).join('').toUpperCase() || '';
+}
+
+export function PatternSetup({ isOpen, onClose, staffList, floorName = 'Care Home' }: PatternSetupProps) {
   const [patterns, setPatterns] = useState<Record<string, Record<number, string>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Fetch existing patterns when dialog opens
   useEffect(() => {
     if (!isOpen) return;
-
     async function loadPatterns() {
       setIsLoading(true);
       try {
@@ -55,13 +56,10 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
         if (!res.ok) throw new Error('Failed to load patterns');
         const data = await res.json();
         
-        // Convert array to structured map: staffId -> dayOfWeek -> shiftCode
         interface Pattern {
-          id?: string;
           staffId: string;
           dayOfWeek: number;
           code: string;
-          shiftCodeId?: string;
         }
 
         const patternMap: Record<string, Record<number, string>> = {};
@@ -81,7 +79,6 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
         setIsLoading(false);
       }
     }
-
     loadPatterns();
   }, [isOpen]);
 
@@ -103,20 +100,6 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const shiftCodeIdMap: Record<string, string> = {};
-      const patternsRes = await fetch('/api/rota/pattern');
-      if (patternsRes.ok) {
-        const pData = await patternsRes.json();
-        pData.patterns.forEach((p: { shiftCodeId?: string; code: string }) => {
-          if (p.shiftCodeId && p.code) {
-            shiftCodeIdMap[p.code] = p.shiftCodeId;
-          }
-        });
-      }
-
-      const rotaRes = await fetch(`/api/rota?start=${new Date().toISOString().split('T')[0]}&end=${new Date().toISOString().split('T')[0]}`);
-      void rotaRes;
-
       const payloadPatterns: Array<{ staffId: string; dayOfWeek: number; shiftCode: string | null }> = [];
       staffList.forEach((staff) => {
         const staffPatterns = patterns[staff.id] || {};
@@ -148,113 +131,118 @@ export function PatternSetup({ isOpen, onClose, staffList }: PatternSetupProps) 
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-pearl/95 dark:bg-midnight/95 backdrop-blur-xl border border-slate/10 shadow-2xl p-6 rounded-2xl">
-        <DialogHeader className="mb-4">
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="bottom" className="h-[85vh] p-0 flex flex-col bg-white dark:bg-slate-900 border-t rounded-t-2xl shadow-2xl">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gold/10 rounded-xl text-gold">
+            <div className="p-2.5 bg-gold/10 rounded-xl text-gold hidden sm:flex">
               <Calendar size={22} />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-slate dark:text-pearl">Weekly Shift Patterns</DialogTitle>
-              <DialogDescription className="text-sm text-slate/60 dark:text-pearl/60 mt-1">
-                Configure standard weekly repeating shift patterns for staff members. Use &quot;Fill from pattern&quot; in the toolbar to apply these standard patterns.
-              </DialogDescription>
+              <SheetTitle className="text-xl font-bold text-slate dark:text-pearl">{floorName} — Weekly Patterns</SheetTitle>
+              <SheetDescription className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Set repeating weekly schedules. Apply with &apos;Fill from Patterns&apos;.
+              </SheetDescription>
             </div>
           </div>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="w-10 h-10 text-gold animate-spin" />
-            <p className="text-sm font-medium text-slate/60 dark:text-pearl/60">Loading pattern templates...</p>
+          
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSave} disabled={isSaving || isLoading} className="bg-gold hover:bg-gold/90 text-white font-medium gap-2 hidden sm:flex">
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={16} />}
+              {isSaving ? 'Saving...' : 'Save Templates'}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full shrink-0">
+              <X className="w-5 h-5 text-slate-500" />
+            </Button>
           </div>
-        ) : (
-          <div className="border border-slate/15 dark:border-pearl/10 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-slate-900">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate/5 dark:bg-pearl/5 border-b border-slate/10 dark:border-pearl/10">
-                    <th className="p-4 font-semibold text-slate/70 dark:text-pearl/70 min-w-[200px]">Staff Member</th>
-                    {DAYS_OF_WEEK.map((day) => (
-                      <th key={day.value} className="p-4 font-semibold text-slate/70 dark:text-pearl/70 text-center min-w-[80px]">
-                        {day.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate/10 dark:divide-pearl/10">
-                  {staffList.map((staff) => (
-                    <tr key={staff.id} className="hover:bg-slate/5 dark:hover:bg-pearl/5 transition-colors">
-                      <td className="p-4">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-slate dark:text-pearl">{staff.name}</span>
-                          <span className="text-xs text-slate/50 dark:text-pearl/50 mt-0.5">{staff.role} • {staff.employmentType.replace('_', ' ')}</span>
+        </div>
+        
+        {/* Column Headers Sticky */}
+        <div className="sticky top-[73px] z-10 bg-slate-50 dark:bg-slate-900/90 backdrop-blur border-b border-slate-200 dark:border-slate-800 px-6 py-3 flex items-center">
+          <div className="w-[200px] shrink-0 font-semibold text-xs text-slate-500 uppercase tracking-wider">
+            Staff Member
+          </div>
+          <div className="flex-1 flex items-center justify-between pl-4">
+            {DAYS_OF_WEEK.map((day) => (
+              <div key={day.value} className="flex-1 flex justify-center text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                {day.label}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-2">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3">
+              <Loader2 className="w-10 h-10 text-gold animate-spin" />
+              <p className="text-sm font-medium text-slate-500">Loading pattern templates...</p>
+            </div>
+          ) : staffList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <p className="text-sm font-medium text-slate-500">
+                No staff on this floor. Add staff via Staff Directory first.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col pb-10">
+              {staffList.map((staff, idx) => (
+                <div 
+                  key={staff.id} 
+                  className={cn(
+                    "flex items-center min-h-[56px] border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors",
+                    idx % 2 === 0 ? 'bg-white dark:bg-transparent' : 'bg-slate-50/30 dark:bg-slate-800/10'
+                  )}
+                >
+                  <div className="w-[200px] shrink-0 py-2 pr-4 flex items-center gap-3 border-r border-slate-100 dark:border-slate-800">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                      {getInitials(staff.name)}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-bold text-sm text-slate-800 dark:text-slate-200 truncate" title={staff.name}>{staff.name}</span>
+                      <span className="text-[10px] text-slate-500 truncate mt-0.5">
+                        {staff.role.replace('_', ' ')} • {staff.employmentType.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex-1 flex items-center justify-between pl-4">
+                    {DAYS_OF_WEEK.map((day) => {
+                      const currentShift = patterns[staff.id]?.[day.value] || '';
+                      return (
+                        <div key={day.value} className="flex-1 flex justify-center py-2">
+                          <select
+                            value={currentShift}
+                            onChange={(e) => handleCellChange(staff.id, day.value, e.target.value)}
+                            className="text-xs border border-slate-200 dark:border-slate-700 rounded px-1 py-1 w-14 text-center bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-teal-500 appearance-none font-medium cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                            style={{ textAlignLast: 'center' }}
+                          >
+                            <option value="">-</option>
+                            {SHIFT_CODES.filter(sc => sc.category === 'work' || sc.code === 'RO').map((sc) => (
+                              <option key={sc.code} value={sc.code}>
+                                {sc.code}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      </td>
-                      {DAYS_OF_WEEK.map((day) => {
-                        const currentShift = patterns[staff.id]?.[day.value] || '';
-                        
-                        return (
-                          <td key={day.value} className="p-2 text-center">
-                            <select
-                              value={currentShift}
-                              onChange={(e) => handleCellChange(staff.id, day.value, e.target.value)}
-                              className={cn(
-                                "w-full p-2 text-xs font-bold rounded-lg border text-center cursor-pointer transition-all outline-none",
-                                currentShift === '' && "bg-slate/5 border-slate/20 text-slate dark:text-pearl/70 hover:bg-slate/10",
-                                currentShift === 'LD' && "bg-sky-500/10 border-sky-500/30 text-sky-500 hover:bg-sky-500/20",
-                                currentShift === 'N' && "bg-indigo-500/10 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/20",
-                                currentShift === 'E' && "bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500/20",
-                                currentShift === 'L' && "bg-teal-500/10 border-teal-500/30 text-teal-500 hover:bg-teal-500/20",
-                                currentShift === 'Su' && "bg-emerald-500/10 border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/20",
-                                currentShift === '1-1' && "bg-rose-500/10 border-rose-500/30 text-rose-500 hover:bg-rose-500/20",
-                                currentShift === 'RO' && "bg-amethyst/10 border-amethyst/30 text-amethyst hover:bg-amethyst/20"
-                              )}
-                            >
-                              <option value="" className="bg-white dark:bg-slate-900 text-slate dark:text-pearl">Rest</option>
-                              {SHIFT_CODES.filter(sc => sc.category === 'work' || sc.code === 'RO').map((sc) => (
-                                <option key={sc.code} value={sc.code} className="bg-white dark:bg-slate-900 text-slate dark:text-pearl">
-                                  {sc.code} ({sc.label})
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        )}
-
-        <DialogFooter className="mt-6 flex items-center justify-between gap-3 border-t border-slate/10 dark:border-pearl/10 pt-4">
-          <div className="flex items-center gap-2 text-xs text-slate/50 dark:text-pearl/50">
-            <Info size={14} className="text-gold" />
-            Changes saved here are templates and won&apos;t affect existing rota entries until applied.
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving} className="bg-gold hover:bg-gold/90 text-white font-medium gap-2">
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Save Templates
-                </>
-              )}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          )}
+        </div>
+        
+        {/* Mobile Save Button */}
+        <div className="sm:hidden p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <Button onClick={handleSave} disabled={isSaving || isLoading} className="w-full bg-gold hover:bg-gold/90 text-white font-medium gap-2">
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={16} />}
+            {isSaving ? 'Saving...' : 'Save Templates'}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

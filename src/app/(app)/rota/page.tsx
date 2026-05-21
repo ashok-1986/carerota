@@ -177,17 +177,19 @@ export default function RotaPage() {
     }))
   );
 
-  const patternStaffList = costStaff.map((s) => {
-    const ch = typeof s.contractedHours === 'number' ? s.contractedHours : parseFloat(String(s.contractedHours || '0')) || 0;
-    return {
-      id: s.id,
-      name: (s as ApiCostStaff).name || s.id,
-      role: s.role,
-      employmentType: s.employmentType,
-      contractedHours: ch,
-      homeFloorId: (typeof (s as ApiCostStaff).homeFloorId === 'string' ? (s as ApiCostStaff).homeFloorId : null) ?? null,
-    };
-  });
+  const patternStaffList = (data?.sections || []).flatMap((sec: { staff: ApiCostStaff[] }) =>
+    sec.staff.map((s: ApiCostStaff) => {
+      const ch = typeof s.contractedHours === 'number' ? s.contractedHours : parseFloat(String(s.contractedHours || '0')) || 0;
+      return {
+        id: s.id,
+        name: s.name || s.id,
+        role: s.role || 'caregiver',
+        employmentType: s.employmentType || 'full_time',
+        contractedHours: ch,
+        homeFloorId: activeFloorId ?? null,
+      };
+    })
+  );
 
   const budgetCapGbp = 72000;
   const { data: additionalCostsData } = useAdditionalCosts(startDateStr);
@@ -293,6 +295,7 @@ export default function RotaPage() {
           isOpen={isPatternSetupOpen}
           onClose={() => setIsPatternSetupOpen(false)}
           staffList={patternStaffList}
+          floorName={activeFloorName}
         />
       )}
 

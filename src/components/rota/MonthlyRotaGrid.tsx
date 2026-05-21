@@ -10,6 +10,13 @@ import { useRotaDrag } from '@/hooks/useRotaDrag';
 import { useBulkUpdateCells } from '@/hooks/useRota';
 import { SHIFT_CODES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 type StaffInfo = { id: string; name: string; contractedHours: number; homeFloorId: string | null };
 type Section = { title: string; staff: StaffInfo[] };
@@ -102,6 +109,20 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     position: { top: 0, left: 0 }
   });
 
+  const [contextMenuState, setContextMenuState] = useState<{
+    isOpen: boolean;
+    staffId: string;
+    dateStr: string;
+    code: string | null;
+    position: { top: number; left: number };
+  }>({
+    isOpen: false,
+    staffId: '',
+    dateStr: '',
+    code: null,
+    position: { top: 0, left: 0 }
+  });
+
   const { dragState, startDrag, onDragOver, endDrag } = useRotaDrag((cells) => {
     if (cells.length > 0) {
       setPickerState({
@@ -187,6 +208,44 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
     }
   };
 
+  const handleBulkApply = (staffId: string, dateStr: string, codeToApply: string | null) => {
+    const targetDay = new Date(dateStr).getDay();
+    const targetDates = days.filter(d => d.getDay() === targetDay).map(d => format(d, 'yyyy-MM-dd'));
+
+    setOptimisticOverrides(prev => {
+      const next = { ...prev };
+      targetDates.forEach(dStr => {
+        const key = `${staffId}_${dStr}`;
+        if (codeToApply) next[key] = codeToApply;
+        else delete next[key];
+      });
+      return next;
+    });
+
+    const updates = targetDates.map(dStr => {
+      let floorId = '00000000-0000-0000-0000-000000000000';
+      for (const section of sections) {
+        const s = section.staff.find(e => e.id === staffId);
+        if (s && s.homeFloorId) {
+          floorId = s.homeFloorId;
+          break;
+        }
+      }
+
+      return {
+        homeId,
+        staffId,
+        shiftDate: dStr,
+        shiftCodeId: codeToApply,
+        homeFloorId: floorId,
+        rotaMonth: getRotaMonthDate(dStr),
+        createdBy: 'system',
+      };
+    });
+
+    bulkUpdate(updates);
+  };
+
   return (
     <div className="bg-white border border-slate/20 rounded-xl shadow-sm overflow-hidden flex flex-col mt-6 select-none">
       {/* Sticky Header Row */}
@@ -263,6 +322,16 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
                           "w-14 flex-shrink-0 p-0.5 flex items-center justify-center border-r border-slate/10/50",
                           isWeekend ? "bg-slate/5" : "bg-white"
                         )}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenuState({
+                            isOpen: true,
+                            staffId: employee.id,
+                            dateStr,
+                            code,
+                            position: { top: e.clientY, left: e.clientX }
+                          });
+                        }}
                       >
                         <RotaCell
                           code={code}
@@ -322,6 +391,31 @@ export function MonthlyRotaGrid({ days, sections, initialEntries = [], homeId }:
         onClose={() => setPickerState(prev => ({ ...prev, isOpen: false }))}
         position={pickerState.position}
       />
+
+      <div 
+        style={{ position: 'fixed', top: contextMenuState.position.top, left: contextMenuState.position.left, zIndex: 100 }}
+      >
+        <DropdownMenu open={contextMenuState.isOpen} onOpenChange={(open) => setContextMenuState(prev => ({...prev, isOpen: open}))}>
+          <DropdownMenuTrigger className="absolute outline-none" style={{ width: 0, height: 0, padding: 0, border: 0 }} aria-hidden="true" tabIndex={-1} />
+          <DropdownMenuContent className="w-64 shadow-xl" align="start" sideOffset={2}>
+            {contextMenuState.code && (
+              <DropdownMenuItem 
+                className="cursor-pointer text-sm py-2"
+                onClick={() => handleBulkApply(contextMenuState.staffId, contextMenuState.dateStr, contextMenuState.code)}
+              >
+                Apply <strong>{contextMenuState.code}</strong> to all {format(new Date(contextMenuState.dateStr || new Date()), 'EEEE')}s this period
+              </DropdownMenuItem>
+            )}
+            {contextMenuState.code && <DropdownMenuSeparator />}
+            <DropdownMenuItem 
+              className="cursor-pointer text-sm text-red-600 focus:text-red-600 focus:bg-red-50 py-2"
+              onClick={() => handleBulkApply(contextMenuState.staffId, contextMenuState.dateStr, null)}
+            >
+              Clear all {format(new Date(contextMenuState.dateStr || new Date()), 'EEEE')}s this period
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

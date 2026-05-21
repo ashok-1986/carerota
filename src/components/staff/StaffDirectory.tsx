@@ -13,10 +13,11 @@ import type { StaffMember } from '@/hooks/useStaff';
 
 interface StaffDirectoryProps {
   staff: StaffMember[];
+  floors?: { id: string; name: string }[];
   isLoading?: boolean;
 }
 
-export function StaffDirectory({ staff, isLoading }: StaffDirectoryProps) {
+export function StaffDirectory({ staff, floors: propFloors = [], isLoading }: StaffDirectoryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
@@ -28,12 +29,13 @@ export function StaffDirectory({ staff, isLoading }: StaffDirectoryProps) {
   }, [staff]);
 
   const floors = useMemo(() => {
-    const seen = new Set<string>();
-    return staff
-      .filter((s) => s.floorName && !seen.has(s.floorName))
-      .map((s) => ({ id: s.floorName!, name: s.floorName! }))
+    if (propFloors.length > 0) return propFloors;
+    // Fallback to extraction if not provided
+    const uniqueFloors = [...new Set(staff.map(s => s.floorName))].filter(Boolean) as string[];
+    return uniqueFloors
+      .map((name) => ({ id: name, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [staff]);
+  }, [staff, propFloors]);
 
   const filtered = useMemo(() => {
     return staff.filter((s) => {
