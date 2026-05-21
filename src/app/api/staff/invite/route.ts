@@ -29,6 +29,19 @@ export async function POST(req: NextRequest) {
     }
 
     const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    let userId: string;
+
+    if (existingUser.length > 0) {
+      userId = existingUser[0].id;
+    } else {
+      // Pre-emptively create the user so they are correctly linked
+      const [newUser] = await db.insert(users).values({
+        id: crypto.randomUUID(),
+        email: email,
+        name: name,
+      }).returning();
+      userId = newUser.id;
+    }
 
     const [staffMember] = await db.insert(staff).values({
       homeId,
@@ -38,7 +51,7 @@ export async function POST(req: NextRequest) {
       employmentType: employmentType || 'bank',
       contractedHours: contractedHours || null,
       payRateHourly: payRateHourly || null,
-      authUserId: existingUser.length > 0 ? existingUser[0].id : null,
+      authUserId: userId,
       isActive: true,
     }).returning();
 
