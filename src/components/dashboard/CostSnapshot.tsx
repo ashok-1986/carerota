@@ -71,9 +71,12 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName, salaryCost = 
             </p>
           )}
         </div>
-        <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
+        <div className="bg-white/50 rounded-xl p-4 border border-slate/10 relative">
           <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Budget Cap</p>
           <p className="text-xl font-display font-bold text-midnight tracking-tight">{formatCurrency(budgetCap)}</p>
+          <Link href="/settings?tab=home" className="absolute top-4 right-4 text-[10px] font-medium text-gold-600 hover:text-gold-700 hover:underline">
+            Edit cap &rarr;
+          </Link>
         </div>
         <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
           <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Variance</p>

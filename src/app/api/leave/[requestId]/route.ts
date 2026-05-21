@@ -8,6 +8,7 @@ import { logAction } from '@/lib/audit';
 import { sendLeaveApprovalEmail, sendLeaveDeclineEmail } from '@/lib/email';
 import { z } from 'zod';
 import { blockRotaForLeave } from '@/lib/rota';
+import { fireWebhook } from '@/lib/webhooks';
 
 const patchSchema = z.object({
   status: z.enum(['approved', 'declined']),
@@ -117,6 +118,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       beforeStatus: leaveReq.status,
       afterStatus: status,
       notes: notes || undefined,
+    });
+
+    await fireWebhook(homeId, status === 'approved' ? 'leave.approved' : 'leave.declined', {
+      requestId,
+      staffId: leaveReq.staffId,
+      status,
+      reviewerId,
     });
 
     return NextResponse.json({ data: updatedRequest });

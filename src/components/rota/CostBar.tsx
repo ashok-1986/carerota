@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { AlertTriangle, CheckCircle, Flame, ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import { useAdditionalCosts, useAddAdditionalCost, useDeleteAdditionalCost } from '@/hooks/useAdditionalCosts';
+import Link from 'next/link';
 
 interface CostBarProps {
   projectedCost: number;
@@ -205,8 +206,11 @@ export function CostBar({
             })}
             <div className="border-t border-slate/20 pt-2 flex items-center justify-between text-sm font-bold">
               <span className="text-midnight">TOTAL</span>
-              <span className={cn(isOverBudget ? 'text-danger' : 'text-teal')}>
-                {formatCurrency(projectedCost)} of {formatCurrency(72000)} cap
+              <span className={cn("flex items-center gap-2", isOverBudget ? 'text-danger' : 'text-teal')}>
+                <span>{formatCurrency(projectedCost)} of {formatCurrency(72000)} cap</span>
+                <Link href="/settings?tab=home" className="text-[10px] font-normal text-gold-600 hover:text-gold-700 hover:underline">
+                  Edit &rarr;
+                </Link>
               </span>
             </div>
 

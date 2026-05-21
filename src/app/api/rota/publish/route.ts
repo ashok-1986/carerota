@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { rotaEntries, auditLog } from '@/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
+import { fireWebhook } from '@/lib/webhooks';
 import { z } from 'zod';
 
 const publishSchema = z.object({
@@ -73,6 +74,9 @@ export async function POST(req: NextRequest) {
         period: { start, end }
       };
     });
+
+    // Fire webhook asynchronously
+    await fireWebhook(homeId, 'rota.published', { start, end, count: summary.count });
 
     return NextResponse.json(summary);
   } catch (error) {
