@@ -57,8 +57,7 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ data: updatedHome });
   } catch (error) {
-    console.error('Error in PATCH /api/settings/budget:', error);
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[API Error]', error);
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

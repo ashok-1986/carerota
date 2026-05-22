@@ -5,14 +5,26 @@ import { db } from "./db";
 import { staff, homes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { customAdapter } from "./auth-adapter";
+import { rateLimit } from "./rate-limit";
 
 const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut: baseSignOut } = NextAuth({
   adapter: customAdapter(),
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 8 * 60 * 60,      // 8 hours — sessions expire after 8 hours of inactivity
+    updateAge: 60 * 60,        // Refresh the token every hour to keep it current
+  },
   providers: [
     Resend({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.RESEND_FROM_EMAIL ?? 'support@alchemetryx.com',
+      normalizeIdentifier(identifier: string): string {
+        const { allowed } = rateLimit(`magic:${identifier}`, 3, 300_000);
+        if (!allowed) throw new Error('Too many magic link requests');
+        const [local, domain] = identifier.toLowerCase().trim().split("@");
+        const parsedDomain = domain.split(",")[0];
+        return `${local}@${parsedDomain}`;
+      }
     }),
     Credentials({
       name: 'credentials',
@@ -20,8 +32,26 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async authorize(credentials, req: any) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        const headersObj = req?.headers && typeof req.headers.get === 'function' 
+          ? {
+              'x-forwarded-for': req.headers.get('x-forwarded-for'),
+              'x-real-ip': req.headers.get('x-real-ip')
+            }
+          : req?.headers;
+
+        const ip = headersObj?.['x-forwarded-for']?.split(',')[0]?.trim() 
+          ?? headersObj?.['x-real-ip'] 
+          ?? 'unknown';
+
+        const { allowed, retryAfter } = rateLimit(`login:${ip}`, 5, 60_000);
+        
+        if (!allowed) {
+          throw new Error(`Too many login attempts. Try again in ${retryAfter} seconds.`);
+        }
 
         // Hardcoded admin account for testing while email is broken
         // Replace with DB lookup after Resend domain is verified

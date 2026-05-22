@@ -149,7 +149,12 @@ export default function MyShiftsPage() {
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-bold text-midnight">This Week</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-midnight">This Week</h2>
+          <a href="/api/staff/me/export" download className="text-[10px] text-slate hover:text-midnight transition-colors">
+            Download my personal data (GDPR)
+          </a>
+        </div>
         {weekDays.map((day) => {
           const dayShifts = shiftsByDate.get(day.dateStr) || [];
           const onLeave = isOnLeave(day.dateStr);
