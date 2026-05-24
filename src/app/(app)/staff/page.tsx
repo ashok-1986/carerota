@@ -20,7 +20,7 @@ export default function StaffPage() {
           </p>
         </div>
         <Link href="/settings?tab=home" className="text-sm font-medium text-gold-600 hover:text-gold-700 hover:underline bg-gold/10 px-4 py-2 rounded-md transition-colors">
-          Settings &rarr;
+          Floor Settings &rarr;
         </Link>
       </div>
 

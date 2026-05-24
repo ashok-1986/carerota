@@ -40,7 +40,7 @@ export function Sidebar({ homeName = "Marlborough Court", userName = "Manager", 
   ];
 
   return (
-    <aside className="w-60 glass-sidebar flex flex-col h-screen fixed left-0 top-0 z-20">
+    <aside className="hidden xl:flex w-60 glass-sidebar flex-col h-screen fixed left-0 top-0 z-20">
       <div className="p-6 border-b border-white/8">
         <div className="flex items-center gap-2">
           <div className="size-9 rounded-xl bg-white/10 flex items-center justify-center">

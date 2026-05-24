@@ -7,6 +7,8 @@ import { homeFloors } from '@/db/schema/floors';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { generatePayrollRows, convertToCsv } from '@/lib/csv';
+import { addMonths, subDays, parseISO, format } from 'date-fns';
+import { insertAuditLog } from '@/db/queries/audit';
 
 const exportSchema = z.object({
   start: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
@@ -15,13 +17,11 @@ const exportSchema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  // 1. Verify session exists → 401 if not
   const session = await auth();
   if (!session || !session.user) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 
-  // 2. Extract homeId and role
   const homeId = session.user.homeId;
   const role = session.user.role;
 
@@ -29,7 +29,6 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Forbidden: Home association missing', { status: 403 });
   }
 
-  // 4. Verify user role is in the allowed list → 403 if not (manager/admin only for payroll exports)
   const allowedRoles = ['home_manager', 'manager'];
   if (!allowedRoles.includes(role || '')) {
     return new NextResponse('Forbidden: Only managers can export payroll data', { status: 403 });
@@ -47,7 +46,6 @@ export async function GET(req: NextRequest) {
 
   const { start: startDate, end: endDate, floorId: targetFloorId } = result.data;
 
-  // 3. Verify the requested floorId belongs to that homeId → 403 if not
   if (targetFloorId) {
     const [floor] = await db
       .select()
@@ -60,14 +58,12 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Get live data
     const [staffList, entries, floors] = await Promise.all([
       getStaffByHome(homeId),
       getRotaEntriesForPeriod(homeId, startDate, endDate),
       db.select().from(homeFloors).where(eq(homeFloors.homeId, homeId)),
     ]);
 
-    // Filter staff and entries if targetFloorId is specified
     const filteredStaff = targetFloorId
       ? staffList.filter((s) => s.homeFloorId === targetFloorId)
       : staffList;
@@ -76,7 +72,6 @@ export async function GET(req: NextRequest) {
       ? entries.filter((e) => e.homeFloorId === targetFloorId)
       : entries;
 
-    // Generate CSV
     const rows = generatePayrollRows(filteredEntries, filteredStaff, floors);
     const csvContent = convertToCsv(rows);
 
@@ -92,6 +87,76 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error generating payroll export:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session || !session.user) {
+    return new NextResponse('Unauthorized', { status: 401 });
+  }
+
+  const homeId = session.user.homeId;
+  const role = session.user.role;
+  const userId = session.user.id;
+
+  if (!homeId) {
+    return new NextResponse('Forbidden: Home association missing', { status: 403 });
+  }
+
+  const allowedRoles = ['home_manager', 'manager'];
+  if (!allowedRoles.includes(role || '')) {
+    return new NextResponse('Forbidden: Only managers can export payroll data', { status: 403 });
+  }
+
+  try {
+    const { payPeriodStart, floorIds } = await req.json();
+    if (!payPeriodStart || !Array.isArray(floorIds)) {
+      return new NextResponse('Invalid request body', { status: 400 });
+    }
+
+    const startDate = payPeriodStart;
+    const start = parseISO(startDate);
+    const end = subDays(addMonths(start, 1), 1);
+    const endDateStr = format(end, 'yyyy-MM-dd');
+
+    const [staffList, entries, floors] = await Promise.all([
+      getStaffByHome(homeId),
+      getRotaEntriesForPeriod(homeId, startDate, endDateStr),
+      db.select().from(homeFloors).where(eq(homeFloors.homeId, homeId)),
+    ]);
+
+    // Filter staff and entries based on selected floorIds
+    const filteredStaff = staffList.filter((s) => s.homeFloorId && floorIds.includes(s.homeFloorId));
+    const filteredEntries = entries.filter((e) => e.homeFloorId && floorIds.includes(e.homeFloorId));
+
+    // Generate CSV
+    const rows = generatePayrollRows(filteredEntries, filteredStaff, floors);
+    const csvContent = convertToCsv(rows);
+
+    // Audit log the export
+    await insertAuditLog({
+      homeId,
+      userId,
+      action: 'CSV_EXPORTED',
+      entityType: 'home',
+      entityId: homeId,
+      afterValue: { payPeriodStart, floorIds, rowCount: rows.length },
+    });
+
+    const filename = `softworks-rota-${payPeriodStart}.csv`;
+
+    return new Response(csvContent, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
+  } catch (error) {
+    console.error('Error generating payroll CSV export:', error);
     return new NextResponse('Internal Server Error', { status: 500 });
   }
 }

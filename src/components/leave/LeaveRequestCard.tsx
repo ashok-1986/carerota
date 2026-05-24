@@ -70,16 +70,27 @@ export function LeaveRequestCard({ request, onApprove, onDecline, isManager }: L
   return (
     <motion.div
       variants={listItem}
-      className="flex items-center gap-4 rounded-2xl border border-slate/15 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+      className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-slate/15 bg-white p-5 shadow-sm hover:shadow-md transition-shadow w-full"
     >
-      <Avatar className="size-11 bg-midnight shrink-0 shadow-sm">
-        <AvatarFallback className="bg-midnight text-white text-xs font-bold">
-          {getInitials(request.staffName)}
-        </AvatarFallback>
-      </Avatar>
+      <div className="flex items-center gap-4 w-full sm:w-auto">
+        <Avatar className="size-11 bg-midnight shrink-0 shadow-sm">
+          <AvatarFallback className="bg-midnight text-white text-xs font-bold">
+            {getInitials(request.staffName)}
+          </AvatarFallback>
+        </Avatar>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex-1 min-w-0 sm:hidden">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-sm font-bold text-midnight truncate">{request.staffName}</span>
+            <Badge variant="outline" className={`text-[10px] font-semibold px-2 py-0.5 ${typeStyle.className}`}>
+              {typeStyle.label}
+            </Badge>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 min-w-0 w-full">
+        <div className="hidden sm:flex items-center gap-2 flex-wrap">
           {request.staffId ? (
             <Link
               href={`/staff/${request.staffId}`}
@@ -96,6 +107,13 @@ export function LeaveRequestCard({ request, onApprove, onDecline, isManager }: L
           <Badge variant="outline" className={`text-[11px] font-semibold px-2.5 py-0.5 ${typeStyle.className}`}>
             {typeStyle.label}
           </Badge>
+          <Badge variant="outline" className={`text-[10px] font-medium px-2 py-0.5 ${statusStyle.className}`}>
+            {statusStyle.label}
+          </Badge>
+        </div>
+
+        {/* Display badges on mobile beneath the name */}
+        <div className="flex sm:hidden items-center gap-1.5 mt-1">
           <Badge variant="outline" className={`text-[10px] font-medium px-2 py-0.5 ${statusStyle.className}`}>
             {statusStyle.label}
           </Badge>
@@ -128,11 +146,11 @@ export function LeaveRequestCard({ request, onApprove, onDecline, isManager }: L
       </div>
 
       {isManager && request.status === "pending" ? (
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0 mt-3 sm:mt-0">
           <Button
             size="sm"
             variant="default"
-            className="bg-teal hover:bg-teal/90 text-white rounded-xl shadow-sm"
+            className="bg-teal hover:bg-teal/90 text-white rounded-xl shadow-sm h-11 sm:h-9 cursor-pointer"
             onClick={() => onApprove?.(request.id)}
           >
             <Check className="size-3.5 mr-1" />
@@ -141,7 +159,7 @@ export function LeaveRequestCard({ request, onApprove, onDecline, isManager }: L
           <Button
             size="sm"
             variant="outline"
-            className="border-danger/30 text-danger hover:bg-danger/10 rounded-xl"
+            className="border-danger/30 text-danger hover:bg-danger/10 rounded-xl h-11 sm:h-9 cursor-pointer"
             onClick={() => onDecline?.(request.id)}
           >
             <X className="size-3.5 mr-1" />

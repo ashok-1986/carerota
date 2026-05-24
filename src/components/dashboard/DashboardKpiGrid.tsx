@@ -23,7 +23,7 @@ export function DashboardKpiGrid({ items }: DashboardKpiGridProps) {
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
-      className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+      className="grid grid-cols-2 md:grid-cols-4 gap-4"
     >
       {items.map((item) => (
         <motion.div key={item.title} variants={listItem}>

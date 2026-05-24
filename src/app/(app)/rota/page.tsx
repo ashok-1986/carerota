@@ -18,7 +18,7 @@ import { useAdditionalCosts } from '@/hooks/useAdditionalCosts';
 import { useSession } from 'next-auth/react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 
 import { PatternSetup } from '@/components/rota/PatternSetup';
 import { PublishReview } from '@/components/rota/PublishReview';
@@ -191,7 +191,16 @@ export default function RotaPage() {
     })
   );
 
-  const budgetCapGbp = 72000;
+  const { data: budgetData } = useQuery({
+    queryKey: ['homeDetails'],
+    queryFn: async () => {
+      const res = await fetch('/api/settings/budget');
+      if (!res.ok) throw new Error('Failed to fetch budget');
+      return res.json().then(j => j.data);
+    }
+  });
+  const budgetCapGbp = budgetData ? Number(budgetData.budgetCapMonthly) : 72000;
+
   const { data: additionalCostsData } = useAdditionalCosts(startDateStr);
   const additionalCostTotal = additionalCostsData?.totalAdditional ?? 0;
   const costSummary = useCost(costEntries, costStaff, budgetCapGbp, payPeriod.days, additionalCostTotal);
@@ -257,6 +266,7 @@ export default function RotaPage() {
             salaryCost={costSummary.salaryCost}
             additionalCostTotal={costSummary.additionalCostTotal}
             rotaMonth={startDateStr}
+            budgetCap={budgetCapGbp}
           />
 
           <CostDashboard

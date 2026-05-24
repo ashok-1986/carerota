@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { toggleWebhook, deleteWebhook } from '@/db/queries/webhooks';
+import { logAction } from '@/lib/audit';
 import { z } from 'zod';
 
 type RouteParams = { params: Promise<{ webhookId: string }> };
@@ -32,6 +33,17 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const { webhookId } = await params;
     const deleted = await deleteWebhook(webhookId, session.user.homeId);
+
+    if (deleted) {
+      await logAction('WEBHOOK_DELETED', {
+        homeId: session.user.homeId,
+        userId: session.user.id,
+        entityType: 'webhook',
+        entityId: webhookId,
+        beforeValue: deleted,
+      });
+    }
+
     return NextResponse.json({ data: deleted });
   } catch (error) {
     console.error('Error deleting webhook:', error);

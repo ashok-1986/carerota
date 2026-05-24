@@ -59,7 +59,7 @@ export function CostSnapshot({ projectedCost, budgetCap, homeName, salaryCost = 
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-5 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
         <div className="bg-white/50 rounded-xl p-4 border border-slate/10">
           <p className="text-[10px] text-slate uppercase tracking-wider font-medium mb-2">Total Cost</p>
           <p className={cn("text-xl font-display font-bold tracking-tight", isOver ? "text-danger" : "text-midnight")}>
