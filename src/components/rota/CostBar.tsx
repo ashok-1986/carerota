@@ -18,6 +18,7 @@ interface CostBarProps {
   salaryCost: number;
   additionalCostTotal: number;
   rotaMonth: string;
+  budgetCap: number;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ export function CostBar({
   salaryCost,
   additionalCostTotal,
   rotaMonth,
+  budgetCap,
 }: CostBarProps) {
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -207,9 +209,9 @@ export function CostBar({
             <div className="border-t border-slate/20 pt-2 flex items-center justify-between text-sm font-bold">
               <span className="text-midnight">TOTAL</span>
               <span className={cn("flex items-center gap-2", isOverBudget ? 'text-danger' : 'text-teal')}>
-                <span>{formatCurrency(projectedCost)} of {formatCurrency(72000)} cap</span>
-                <Link href="/settings?tab=home" className="text-[10px] font-normal text-gold-600 hover:text-gold-700 hover:underline">
-                  Edit &rarr;
+                <span>{formatCurrency(projectedCost)} of {formatCurrency(budgetCap)} cap</span>
+                <Link href="/settings?tab=home" className="text-[10px] font-semibold text-gold-600 hover:text-gold-700 hover:underline">
+                  Edit budget cap &rarr;
                 </Link>
               </span>
             </div>

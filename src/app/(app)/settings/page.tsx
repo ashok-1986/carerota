@@ -5,6 +5,9 @@ import { getFloors } from '@/db/queries/floors';
 import { getStaffByHome } from '@/db/queries/staff';
 import { getWebhooksByHome } from '@/db/queries/webhooks';
 import SettingsTabs from './SettingsTabs';
+import { db } from '@/lib/db';
+import { auditLog } from '@/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -13,16 +16,26 @@ export default async function SettingsPage() {
   }
 
   const homeId = session.user.homeId;
-  const [home, floors, staff, webhooks] = await Promise.all([
+  const [home, floors, staff, webhooks, lastExportLog] = await Promise.all([
     getHomeById(homeId),
     getFloors(homeId),
     getStaffByHome(homeId),
     getWebhooksByHome(homeId),
+    db
+      .select({ createdAt: auditLog.createdAt })
+      .from(auditLog)
+      .where(and(eq(auditLog.homeId, homeId), eq(auditLog.action, 'CSV_EXPORTED')))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(1),
   ]);
 
   if (!home) {
     return <div>Home not found</div>;
   }
+
+  const lastExportDate = lastExportLog && lastExportLog.length > 0
+    ? lastExportLog[0].createdAt.toISOString()
+    : null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -36,6 +49,7 @@ export default async function SettingsPage() {
         floors={floors}
         staff={staff}
         webhooks={webhooks}
+        lastExportDate={lastExportDate}
       />
     </div>
   );

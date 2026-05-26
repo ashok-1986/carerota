@@ -12,7 +12,15 @@ export type SettingsFloor = { id: string, name: string, [key: string]: unknown }
 export type SettingsStaff = { id: string, role: string, payRateHourly?: number | string | null, homeFloorId: string | null, [key: string]: unknown };
 export type SettingsWebhook = { id: string, url: string, description: string | null, events: string[], isActive: boolean | null, lastTriggeredAt: string | Date | null, [key: string]: unknown };
 
-export default function SettingsTabs({ home, floors, staff, webhooks }: { home: SettingsHome, floors: SettingsFloor[], staff: SettingsStaff[], webhooks: SettingsWebhook[] }) {
+interface SettingsTabsProps {
+  home: SettingsHome;
+  floors: SettingsFloor[];
+  staff: SettingsStaff[];
+  webhooks: SettingsWebhook[];
+  lastExportDate: string | null;
+}
+
+export default function SettingsTabs({ home, floors, staff, webhooks, lastExportDate }: SettingsTabsProps) {
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'home';
 
@@ -34,7 +42,7 @@ export default function SettingsTabs({ home, floors, staff, webhooks }: { home: 
       </TabsContent>
 
       <TabsContent value="integrations" className="space-y-6">
-        <IntegrationsTab webhooks={webhooks} />
+        <IntegrationsTab webhooks={webhooks} lastExportDate={lastExportDate} />
       </TabsContent>
 
       <TabsContent value="data" className="space-y-6">

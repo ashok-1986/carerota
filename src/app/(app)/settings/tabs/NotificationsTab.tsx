@@ -4,15 +4,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { SettingsHome } from '../SettingsTabs';
-
-const Switch = ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange: (c: boolean) => void }) => (
-  <input type="checkbox" checked={checked} onChange={(e) => onCheckedChange(e.target.checked)} className="h-4 w-4 text-gold-600 rounded" />
-);
-
-const toast = (args: Record<string, unknown>) => console.log('Toast:', args);
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
 
 export default function NotificationsTab({ home }: { home: SettingsHome }) {
-  
   const defaultSettings = {
     emailOnRotaPublish: true,
     emailOnLeaveRequest: true,
@@ -24,7 +19,7 @@ export default function NotificationsTab({ home }: { home: SettingsHome }) {
 
   const [settings, setSettings] = useState({
     ...defaultSettings,
-    ...(home.homeSettings || {})
+    ...(home.homeSettings as Record<string, unknown> || {})
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -38,12 +33,14 @@ export default function NotificationsTab({ home }: { home: SettingsHome }) {
         body: JSON.stringify(newSettings),
       });
       if (res.ok) {
-        if (showToast) toast({ title: 'Settings saved' });
+        if (showToast) {
+          toast.success('Notification settings saved successfully');
+        }
       } else {
-        toast({ title: 'Failed to save settings', variant: 'destructive' });
+        toast.error('Failed to save notification settings');
       }
     } catch {
-      toast({ title: 'Error saving settings', variant: 'destructive' });
+      toast.error('Error saving notification settings');
     }
     setIsSaving(false);
   };
@@ -51,87 +48,93 @@ export default function NotificationsTab({ home }: { home: SettingsHome }) {
   const handleToggle = (key: string, checked: boolean) => {
     const next = { ...settings, [key]: checked };
     setSettings(next);
-    saveSettings(next, true); // auto-save on toggle
+    saveSettings(next, true); // Auto-saves on toggle
   };
 
   const handleChange = (key: string, value: string) => {
     setSettings({ ...settings, [key]: Number(value) });
   };
 
+  const handleSaveNumbers = () => {
+    saveSettings(settings, true);
+  };
+
   return (
     <div className="grid gap-6">
-      <Card>
+      <Card className="border border-slate-200">
         <CardHeader>
-          <CardTitle>Email Notifications</CardTitle>
-          <CardDescription>Manage which events trigger automated emails.</CardDescription>
+          <CardTitle className="text-xl font-bold font-sans text-midnight">Email Notifications</CardTitle>
+          <CardDescription className="text-sm text-slate-500 font-sans">Manage which events trigger automated emails.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">Rota Published</Label>
-              <p className="text-sm text-slate-500">Email staff when a new rota is published or updated.</p>
+            <div className="space-y-1">
+              <Label className="text-sm font-bold text-midnight block">Rota Published Email</Label>
+              <p className="text-xs text-slate">Notify all staff when a new rota is published or updated.</p>
             </div>
             <Switch checked={settings.emailOnRotaPublish} onCheckedChange={(c: boolean) => handleToggle('emailOnRotaPublish', c)} />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">Leave Requests</Label>
-              <p className="text-sm text-slate-500">Email managers when a new leave request is submitted.</p>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="space-y-1">
+              <Label className="text-sm font-bold text-midnight block">Leave Request Email</Label>
+              <p className="text-xs text-slate">Notify manager when staff submit leave.</p>
             </div>
             <Switch checked={settings.emailOnLeaveRequest} onCheckedChange={(c: boolean) => handleToggle('emailOnLeaveRequest', c)} />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">Leave Decisions</Label>
-              <p className="text-sm text-slate-500">Email staff when their leave is approved or declined.</p>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            <div className="space-y-1">
+              <Label className="text-sm font-bold text-midnight block">Leave Approval Email</Label>
+              <p className="text-xs text-slate">Notify staff when leave is approved or declined.</p>
             </div>
             <Switch checked={settings.emailOnLeaveApproval} onCheckedChange={(c: boolean) => handleToggle('emailOnLeaveApproval', c)} />
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border border-slate-200">
         <CardHeader>
-          <CardTitle>Alerts & Warnings</CardTitle>
-          <CardDescription>Configure operational warnings.</CardDescription>
+          <CardTitle className="text-xl font-bold font-sans text-midnight">Alerts & Warnings</CardTitle>
+          <CardDescription className="text-sm text-slate-500 font-sans">Configure operational warnings.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="text-base">Gap Alerts</Label>
-              <p className="text-sm text-slate-500">Highlight shifts that fall below minimum staffing.</p>
+            <div className="space-y-1">
+              <Label className="text-sm font-bold text-midnight block">Gap Alerts</Label>
+              <p className="text-xs text-slate">Alert when a shift has no staff assigned.</p>
             </div>
             <Switch checked={settings.gapAlertEnabled} onCheckedChange={(c: boolean) => handleToggle('gapAlertEnabled', c)} />
           </div>
           
           {settings.gapAlertEnabled && (
-            <div className="flex items-center justify-between pl-4 border-l-2 border-slate-100">
-              <Label className="font-normal text-slate-600">Minimum staff threshold per shift</Label>
+            <div className="flex items-center justify-between pl-4 border-l-2 border-slate-200 py-1">
+              <Label className="text-xs font-semibold text-slate uppercase tracking-wider">Minimum Staff per Shift</Label>
               <Input 
                 type="number" 
                 value={settings.gapAlertThreshold} 
                 onChange={(e) => handleChange('gapAlertThreshold', e.target.value)} 
-                className="w-24 text-right"
+                className="w-24 text-right text-sm"
+                min={0}
               />
             </div>
           )}
 
           <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-            <div className="space-y-0.5">
-              <Label className="text-base">Budget Warning (%)</Label>
-              <p className="text-sm text-slate-500">Turn cost bars amber when this percentage of the budget cap is reached.</p>
+            <div className="space-y-1">
+              <Label className="text-sm font-bold text-midnight block">Budget Warning Threshold (%)</Label>
+              <p className="text-xs text-slate">Show warning when cost reaches this % of cap.</p>
             </div>
             <Input 
               type="number" 
               value={settings.budgetWarningThreshold} 
               onChange={(e) => handleChange('budgetWarningThreshold', e.target.value)} 
-              className="w-24 text-right"
+              className="w-24 text-right text-sm"
               max={100}
+              min={0}
             />
           </div>
           
           <div className="pt-4 border-t border-slate-100">
-            <Button onClick={() => saveSettings(settings, true)} disabled={isSaving}>
+            <Button onClick={handleSaveNumbers} disabled={isSaving} className="bg-gold hover:bg-gold/90 text-midnight font-semibold h-11 px-6 rounded-lg transition-colors cursor-pointer">
               {isSaving ? 'Saving...' : 'Save Settings'}
             </Button>
           </div>

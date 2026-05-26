@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { staff, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { logAction } from '@/lib/audit';
+import { fireWebhook } from '@/lib/webhooks';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -60,6 +61,15 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       entityType: 'staff',
       entityId: staffMember.id,
+    });
+
+    // Fire webhook staff.added
+    await fireWebhook(homeId, 'staff.added', {
+      staffId: staffMember.id,
+      name: staffMember.name,
+      role: staffMember.role,
+      email,
+      employmentType: staffMember.employmentType,
     });
 
     return NextResponse.json({ data: staffMember }, { status: 201 });

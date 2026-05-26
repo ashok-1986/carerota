@@ -42,6 +42,7 @@ export function TopBar({ title = "CareRota", pendingLeaveCount = 0, userName = "
         <div className="flex items-center gap-3">
           <div className="w-1 h-5 bg-gold rounded-full" />
           <h2 className="text-lg font-display font-semibold text-midnight tracking-tight">{title}</h2>
+          <span className="hidden sm:inline-block text-xs font-medium text-slate/50">· {homeName}</span>
         </div>
 
         <div className="flex items-center gap-3">

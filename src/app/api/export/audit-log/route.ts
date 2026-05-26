@@ -9,8 +9,14 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.homeId) return new NextResponse('Unauthorized', { status: 401 });
 
+  const { homeId, role, id: userId } = session.user;
+
+  // Verify role is home_manager
+  if (role !== 'home_manager') {
+    return new NextResponse('Forbidden: Only home_manager can export audit logs', { status: 403 });
+  }
+
   try {
-    const { homeId } = session.user;
     const logs = await db.select().from(auditLog).where(eq(auditLog.homeId, homeId));
 
     const csvRows = [
@@ -29,7 +35,7 @@ export async function GET() {
 
     await insertAuditLog({
       homeId,
-      userId: session.user.id,
+      userId,
       action: 'AUDIT_LOG_EXPORTED',
       entityType: 'home',
       entityId: homeId,
