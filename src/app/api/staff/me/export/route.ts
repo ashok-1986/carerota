@@ -3,9 +3,10 @@ import { db } from '@/lib/db'
 import { staff, rotaEntries, leaveRequests } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { logAction } from '@/lib/audit'
-import { NextResponse } from 'next/server'
+import { getClientIp } from '@/lib/client-ip'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
@@ -71,7 +72,7 @@ export async function GET() {
     entityType: 'staff',
     entityId: staffRecord.id,
     afterValue: { exportedAt: exportData.exportedAt },
-  })
+  }, getClientIp(req))
 
   // Return as downloadable JSON file
   return new Response(JSON.stringify(exportData, null, 2), {

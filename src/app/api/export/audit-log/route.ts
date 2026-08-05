@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { auditLog } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { insertAuditLog } from '@/db/queries/audit';
+import { getClientIp } from '@/lib/client-ip';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.homeId) return new NextResponse('Unauthorized', { status: 401 });
 
@@ -39,6 +40,7 @@ export async function GET() {
       action: 'AUDIT_LOG_EXPORTED',
       entityType: 'home',
       entityId: homeId,
+      ipAddress: getClientIp(req),
     });
 
     return new NextResponse(csvContent, {

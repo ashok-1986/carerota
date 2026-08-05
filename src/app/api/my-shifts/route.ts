@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { rotaEntries, shiftCodes } from '@/db/schema';
+import { rotaEntries, shiftCodes, staff } from '@/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const staffId = session.user.id;
+  const userId = session.user.id;
   const { searchParams } = new URL(req.url);
   const start = searchParams.get('start');
   const end = searchParams.get('end');
@@ -20,6 +20,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Resolve the staff record linked to this auth user. rotaEntries.staffId
+    // references staff.id, NOT the auth users.id held in session.user.id.
+    const [staffMember] = await db
+      .select()
+      .from(staff)
+      .where(eq(staff.authUserId, userId))
+      .limit(1);
+
+    if (!staffMember) {
+      return NextResponse.json({ error: 'No staff record linked to this account' }, { status: 404 });
+    }
+
     const rows = await db
       .select({
         id: rotaEntries.id,
@@ -32,7 +44,7 @@ export async function GET(req: NextRequest) {
       .leftJoin(shiftCodes, eq(rotaEntries.shiftCodeId, shiftCodes.id))
       .where(
         and(
-          eq(rotaEntries.staffId, staffId),
+          eq(rotaEntries.staffId, staffMember.id),
           gte(rotaEntries.shiftDate, start),
           lte(rotaEntries.shiftDate, end),
         ),

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { isManager } from '@/lib/authz';
 import { updateFloorName } from '@/db/queries/floors';
 import { z } from 'zod';
 
@@ -12,6 +13,7 @@ type RouteParams = { params: Promise<{ floorId: string }> };
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.homeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isManager(session.user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const { floorId } = await params;

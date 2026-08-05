@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { staff, leaveRequests, homes, shiftCodes, additionalCosts } from "@/db/schema";
 import { eq, and, count, sql } from "drizzle-orm";
-import { getPayPeriod } from "@/lib/utils";
+import { getPayPeriod, cn } from "@/lib/utils";
 import { DashboardKpiGrid, type KpiItem } from "@/components/dashboard/DashboardKpiGrid";
 import { CostSnapshot } from "@/components/dashboard/CostSnapshot";
 import { Calendar, ChevronRight, Users, Building2, UserCircle2, Briefcase } from "lucide-react";
@@ -40,18 +40,20 @@ export default async function DashboardPage() {
   const allStaff = await getStaffByHome(homeId);
   const rotaEntriesList = await getRotaEntriesForPeriod(homeId, periodStart, periodEnd);
 
-  const isPublished = rotaEntriesList.length > 0 && rotaEntriesList[0].isPublished;
+  const isPublished = rotaEntriesList.length > 0 && rotaEntriesList.every((e) => e.isPublished);
 
-  const budgetCap = Number(home?.budgetCapMonthly ?? 33500);
+  const budgetCap = Number(home?.budgetCapMonthly ?? 72000);
 
   const projectedCostResult = await db.execute(sql<{ total: number }>`
-    SELECT SUM(
-      CAST(${shiftCodes.hours} AS numeric) * CAST(${staff.payRateHourly} AS numeric)
-    ) as total
+    SELECT COALESCE(SUM(
+      CAST(${shiftCodes.hours} AS numeric) * CAST(${staff.payRateHourly} AS numeric) / 100
+    ), 0) as total
     FROM rota_entries re
     JOIN staff ON re.staff_id = staff.id
     JOIN shift_codes ON re.shift_code_id = shift_codes.id
     WHERE re.home_id = ${homeId}
+    AND re.shift_date >= ${periodStart}
+    AND re.shift_date <= ${periodEnd}
     AND re.is_published = true
   `);
   const projectedCostTotal = Number(projectedCostResult.rows[0]?.total ?? 0);
@@ -160,37 +162,39 @@ export default async function DashboardPage() {
       {/* Floor Coverage Summary */}
       <div className="space-y-4">
         <h2 className="text-lg font-display font-semibold text-midnight">Floor Coverage Summary</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
-          {Object.entries(staffByFloor).map(([floorName, stats]) => (
-            <Card key={floorName} className="p-4 bg-white/60 border-slate/10 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-slate/60" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(staffByFloor).map(([floorName, stats]) => {
+            const toneCls = stats.coveragePercent > 80 ? 'text-teal' : stats.coveragePercent > 50 ? 'text-amber-500' : 'text-danger';
+            const barCls = stats.coveragePercent > 80 ? 'bg-teal' : stats.coveragePercent > 50 ? 'bg-amber-500' : 'bg-danger';
+            return (
+              <Card key={floorName} className="p-5 bg-white/60 border-slate/10 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-midnight/5 shrink-0">
+                    <Building2 className="w-4 h-4 text-slate/70" />
+                  </div>
                   <h3 className="text-sm font-bold text-midnight truncate" title={floorName}>{floorName}</h3>
                 </div>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-slate mb-0.5">Staff Assigned</p>
-                  <p className="text-xl font-bold text-midnight">{stats.staffCount}</p>
-                </div>
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate">Coverage</span>
-                    <span className={`font-medium ${stats.coveragePercent > 80 ? 'text-teal' : stats.coveragePercent > 50 ? 'text-amber-500' : 'text-danger'}`}>
-                      {stats.workShifts} shifts
-                    </span>
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-xs text-slate mb-0.5">Staff Assigned</p>
+                      <p className="text-xl font-bold text-midnight">{stats.staffCount}</p>
+                    </div>
+                    <span className="text-xs text-slate/70">{stats.workShifts} shifts</span>
                   </div>
-                  <div className="h-1.5 w-full bg-slate/10 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full rounded-full ${stats.coveragePercent > 80 ? 'bg-teal' : stats.coveragePercent > 50 ? 'bg-amber-500' : 'bg-danger'}`}
-                      style={{ width: `${stats.coveragePercent}%` }}
-                    />
+                  <div>
+                    <div className="flex justify-between items-baseline text-xs mb-1.5">
+                      <span className="text-slate font-medium">Coverage</span>
+                      <span className={cn("font-semibold", toneCls)}>{stats.coveragePercent}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate/10 rounded-full overflow-hidden">
+                      <div className={cn("h-full rounded-full", barCls)} style={{ width: `${stats.coveragePercent}%` }} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       </div>
 

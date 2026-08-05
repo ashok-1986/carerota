@@ -6,7 +6,7 @@ import { staggerContainer, cardItem } from "@/lib/animations";
 import { cn } from "@/lib/utils";
 import { LeaveCalendar } from "@/components/leave/LeaveCalendar";
 import { LeaveRequestList } from "@/components/leave/LeaveRequestList";
-import { LeaveRequestForm } from "@/components/leave/LeaveRequestForm";
+import LeaveRequestForm from "@/components/leave/LeaveRequestForm";
 import { useLeaveRequests } from "@/hooks/useLeave";
 import { CalendarDays, ClipboardList, PlusCircle, ChevronLeft, ChevronRight, Users, CalendarCheck, Clock, Ban } from "lucide-react";
 

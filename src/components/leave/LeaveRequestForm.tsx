@@ -1,29 +1,20 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { leaveRequestSchema } from "@/lib/validations";
-import { useCreateLeaveRequest } from "@/hooks/useLeave";
+import { useState } from "react";
 import { useStaff } from "@/hooks/useStaff";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { LeaveBalance } from "./LeaveBalance";
+import { useCreateLeaveRequest } from "@/hooks/useLeave";
 import { toast } from "sonner";
-import { Calendar, User, FileText } from "lucide-react";
-import { z } from "zod";
-import { leaveTypeEnum } from "@/lib/validations";
-import type { z as ZodType } from "zod";
 
-type FormValues = z.infer<typeof leaveRequestSchema>;
+type LeaveType = "AL" | "ML" | "sick" | "paternity" | "compassionate" | "other";
+
+const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
+  { value: "AL", label: "Annual Leave (AL)" },
+  { value: "ML", label: "Maternity Leave (ML)" },
+  { value: "sick", label: "Sick Leave" },
+  { value: "paternity", label: "Paternity Leave" },
+  { value: "compassionate", label: "Compassionate Leave" },
+  { value: "other", label: "Other Absence" },
+];
 
 type LeaveRequestFormProps = {
   fixedStaffId?: string;
@@ -31,197 +22,177 @@ type LeaveRequestFormProps = {
   isManager?: boolean;
 };
 
-export function LeaveRequestForm({ fixedStaffId, onSuccess, isManager = true }: LeaveRequestFormProps) {
-  const { data: staffList, isLoading: isStaffLoading } = useStaff();
+export default function LeaveRequestForm({
+  fixedStaffId,
+  onSuccess,
+  isManager = true,
+}: LeaveRequestFormProps) {
+  const [staffId, setStaffId] = useState(fixedStaffId || "");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [leaveType, setLeaveType] = useState<LeaveType>("AL");
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: staffList } = useStaff();
   const createMutation = useCreateLeaveRequest();
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(leaveRequestSchema),
-    defaultValues: {
-      staffId: fixedStaffId || "",
-      leaveType: "AL",
-      startDate: "",
-      endDate: "",
-      notes: "",
-    },
-  });
+  const showStaffSelect = isManager && !fixedStaffId;
 
-  const _selectedStaffId = watch("staffId");
-  const leaveType = watch("leaveType");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const onSubmit = async (values: FormValues) => {
-    // Validate dates range order
-    if (new Date(values.startDate) > new Date(values.endDate)) {
-      toast.error("Start date cannot be after end date");
+    if (endDate && startDate && endDate < startDate) {
+      toast.error("End date cannot be before start date");
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       await createMutation.mutateAsync({
-        staffId: values.staffId,
-        leaveType: values.leaveType,
-        startDate: values.startDate,
-        endDate: values.endDate,
-        notes: values.notes || undefined,
+        staffId,
+        leaveType,
+        startDate,
+        endDate,
+        notes: reason || undefined,
       });
       toast.success("Leave request submitted successfully!");
-      reset({
-        staffId: fixedStaffId || "",
-        leaveType: "AL",
-        startDate: "",
-        endDate: "",
-        notes: "",
-      });
-      if (onSuccess) onSuccess();
+
+      setStartDate("");
+      setEndDate("");
+      setLeaveType("AL");
+      setReason("");
+      onSuccess?.();
     } catch (error) {
-      console.error(error);
-      toast.error((error as Error).message || "Failed to submit leave request");
+      toast.error((error as Error).message || "Error submitting leave request");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 bg-white p-6 rounded-lg border border-slate/20 shadow-sm">
-        <div className="space-y-1">
-          <h3 className="text-lg font-bold text-midnight font-sans">Request Leave</h3>
-          <p className="text-xs text-slate">Submit a new annual leave or absence request.</p>
-        </div>
-
-        {/* Staff Selection */}
-        {isManager && !fixedStaffId ? (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-midnight">
-              <User className="h-4 w-4 text-slate" />
-              Staff Member
-            </Label>
-            <div className="relative">
-              {isStaffLoading ? (
-                <div className="h-8 w-full animate-pulse rounded-lg bg-slate/10" />
-              ) : (
-                <Select
-                  value={_selectedStaffId}
-                  onValueChange={(val) => setValue("staffId", val as string, { shouldValidate: true })}
+    <div className="bg-white shadow sm:rounded-lg">
+      <div className="px-4 py-5 sm:p-6">
+        <h3 className="text-lg leading-6 font-medium text-gray-900">
+          Request Leave
+        </h3>
+        <form className="mt-5 sm:flex sm:flex-col" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+            {showStaffSelect && (
+              <div className="sm:col-span-6">
+                <label
+                  htmlFor="staff-select"
+                  className="block text-sm font-medium text-gray-700"
                 >
-                  <SelectTrigger className="w-full h-8 text-sm">
-                    <SelectValue placeholder="Select staff member..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staffList?.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name} ({s.role})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                  Staff Member
+                </label>
+                <select
+                  id="staff-select"
+                  name="staff-select"
+                  className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  value={staffId}
+                  onChange={(e) => setStaffId(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Select staff member...
+                  </option>
+                  {staffList?.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="sm:col-span-3">
+              <label
+                htmlFor="leave-type"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Leave Type
+              </label>
+              <select
+                id="leave-type"
+                name="leave-type"
+                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={leaveType}
+                onChange={(e) => setLeaveType(e.target.value as LeaveType)}
+              >
+                {LEAVE_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            {errors.staffId && (
-              <span className="text-[11px] font-medium text-danger">{errors.staffId.message}</span>
-            )}
+
+            <div className="sm:col-span-3">
+              <label
+                htmlFor="start-date"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Start Date
+              </label>
+              <input
+                type="date"
+                name="start-date"
+                id="start-date"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-3">
+              <label
+                htmlFor="end-date"
+                className="block text-sm font-medium text-gray-700"
+              >
+                End Date
+              </label>
+              <input
+                type="date"
+                name="end-date"
+                id="end-date"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="sm:col-span-6">
+              <label
+                htmlFor="reason"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Reason
+              </label>
+              <textarea
+                id="reason"
+                name="reason"
+                rows={3}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
           </div>
-        ) : null}
 
-        {/* Leave Type */}
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1.5 text-xs font-semibold text-midnight">
-            <FileText className="h-4 w-4 text-slate" />
-            Leave Type
-          </Label>
-          <Select
-            value={leaveType}
-            onValueChange={(val) => setValue("leaveType", (val || "AL") as ZodType.infer<typeof leaveTypeEnum>, { shouldValidate: true })}
-          >
-            <SelectTrigger className="w-full h-8 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="AL">Annual Leave (AL)</SelectItem>
-              <SelectItem value="ML">Maternity Leave (ML)</SelectItem>
-              <SelectItem value="sick">Sick Leave (sick)</SelectItem>
-              <SelectItem value="other">Other Absence</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.leaveType && (
-            <span className="text-[11px] font-medium text-danger">{errors.leaveType.message}</span>
-          )}
-        </div>
-
-        {/* Dates */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-midnight">
-              <Calendar className="h-4 w-4 text-slate" />
-              Start Date
-            </Label>
-            <Input
-              type="date"
-              className="h-8 text-sm"
-              {...register("startDate")}
-            />
-            {errors.startDate && (
-              <span className="text-[11px] font-medium text-danger">{errors.startDate.message}</span>
-            )}
+          <div className="mt-5 sm:mt-6">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Request"}
+            </button>
           </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5 text-xs font-semibold text-midnight">
-              <Calendar className="h-4 w-4 text-slate" />
-              End Date
-            </Label>
-            <Input
-              type="date"
-              className="h-8 text-sm"
-              {...register("endDate")}
-            />
-            {errors.endDate && (
-              <span className="text-[11px] font-medium text-danger">{errors.endDate.message}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="space-y-2">
-          <Label className="text-xs font-semibold text-midnight">Notes / Reason</Label>
-          <Textarea
-            rows={3}
-            placeholder="Add any specific details here..."
-            className="text-sm resize-none"
-            {...register("notes")}
-          />
-          {errors.notes && (
-            <span className="text-[11px] font-medium text-danger">{errors.notes.message}</span>
-          )}
-        </div>
-
-        {/* Submit */}
-        <Button
-          type="submit"
-          className="w-full bg-gold hover:bg-gold/90 text-midnight font-semibold h-9 rounded-md transition-colors"
-          disabled={createMutation.isPending}
-        >
-          {createMutation.isPending ? "Submitting..." : "Submit Leave Request"}
-        </Button>
-      </form>
-
-      {/* Dynamic Interactive Leave Balance Display */}
-      <div className="flex flex-col justify-start">
-        {_selectedStaffId ? (
-          <LeaveBalance staffId={_selectedStaffId} />
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full p-6 border-2 border-dashed border-slate/20 rounded-lg bg-white">
-            <User className="h-10 w-10 text-slate/30 mb-3" />
-            <p className="text-sm font-medium text-slate text-center font-sans">
-              Select a staff member to view their real-time annual leave balance.
-            </p>
-          </div>
-        )}
+        </form>
       </div>
     </div>
   );

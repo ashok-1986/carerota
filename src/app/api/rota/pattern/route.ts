@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { shiftCodes } from '@/db/schema';
 import { z } from 'zod';
+import { isManager, hasRole, PUBLISH_ROLES } from '@/lib/authz';
 
 const upsertPatternSchema = z.object({
   patterns: z.array(z.object({
@@ -29,8 +30,7 @@ export async function GET() {
   }
 
   // 3. Verify role
-  const allowedRoles = ['home_manager', 'manager', 'admin'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!isManager(role)) {
     return new NextResponse('Forbidden: Invalid role permissions', { status: 403 });
   }
 
@@ -59,8 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. Manager role only for updates
-  const allowedRoles = ['home_manager', 'manager'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!hasRole(role, PUBLISH_ROLES)) {
     return new NextResponse('Forbidden: Only managers can update patterns', { status: 403 });
   }
 
@@ -89,7 +88,7 @@ export async function POST(req: NextRequest) {
       shiftCodeId: p.shiftCode ? (codeToIdMap.get(p.shiftCode) || null) : null,
     }));
 
-    await upsertStaffPatterns(dbPatterns);
+    await upsertStaffPatterns(dbPatterns, homeId);
 
     return NextResponse.json({ success: true, count: patterns.length });
   } catch (error) {

@@ -16,6 +16,9 @@ export async function getWebhooksByHome(homeId: string) {
     .where(eq(webhooks.homeId, homeId));
 }
 
+// Accepts an already-encrypted secret (see src/lib/crypto.ts). Callers must
+// encrypt before passing — the raw signing secret must never be stored or
+// returned by any read path.
 export async function createWebhook(data: typeof webhooks.$inferInsert) {
   const [created] = await db
     .insert(webhooks)
@@ -39,4 +42,11 @@ export async function toggleWebhook(id: string, homeId: string, isActive: boolea
     .where(and(eq(webhooks.id, id), eq(webhooks.homeId, homeId)))
     .returning();
   return updated;
+}
+
+export async function markWebhookTriggered(id: string) {
+  await db
+    .update(webhooks)
+    .set({ lastTriggeredAt: new Date() })
+    .where(eq(webhooks.id, id));
 }

@@ -2,13 +2,11 @@
 import { SHIFT_CODES } from './constants';
 import type { CostStaff, CostEntry, CostSnapshot } from '@/types/cost';
 
-/** Normalise pay rate: if stored as pounds (>100), convert to pence by ×100.
- *  Neon/Drizzle decimal columns return numbers, not strings.
- *  Rates > 1000 are clearly in pounds; ≤ 1000 are already in pence.
- */
+/** Pay rates are stored canonically in pence (see reset-seed, updateStaff,
+ *  invite route). No unit conversion is needed — just ensure an integer. */
 function toPence(rate: number): number {
   if (!rate || rate <= 0) return 0;
-  return rate > 1000 ? Math.round(rate) : Math.round(rate * 100);
+  return Math.round(rate);
 }
 
 /** Helper to retrieve SHIFT_CODES entry */

@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { homeFloors } from '@/db/schema/floors';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
+import { isManager } from '@/lib/authz';
 
 const querySchema = z.object({
   start: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
@@ -29,8 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   // 4. Verify user role is in the allowed list: home_manager, manager, admin
-  const allowedRoles = ['home_manager', 'manager', 'admin'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!isManager(role)) {
     return new NextResponse('Forbidden: Invalid role permissions', { status: 403 });
   }
 

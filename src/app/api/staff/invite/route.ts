@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { staff, users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { logAction } from '@/lib/audit';
+import { getClientIp } from '@/lib/client-ip';
 import { fireWebhook } from '@/lib/webhooks';
+import { isManager } from '@/lib/authz';
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -12,8 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const allowedRoles = ['home_manager', 'manager', 'admin'];
-  if (!allowedRoles.includes(session.user.role || '')) {
+  if (!isManager(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -29,20 +29,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Home association missing' }, { status: 403 });
     }
 
-    const existingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    let userId: string;
-
-    if (existingUser.length > 0) {
-      userId = existingUser[0].id;
-    } else {
-      // Pre-emptively create the user so they are correctly linked
-      const [newUser] = await db.insert(users).values({
+    // Atomically get-or-create the user linked to this email. Using an upsert
+    // (rather than select-then-insert) closes the TOCTOU race where two
+    // concurrent invites for the same email both try to insert a new user row.
+    const [user] = await db
+      .insert(users)
+      .values({
         id: crypto.randomUUID(),
-        email: email,
-        name: name,
-      }).returning();
-      userId = newUser.id;
-    }
+        email,
+        name,
+      })
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { name },
+      })
+      .returning();
+    const userId = user.id;
 
     const [staffMember] = await db.insert(staff).values({
       homeId,
@@ -51,7 +53,8 @@ export async function POST(req: NextRequest) {
       role: staffRole,
       employmentType: employmentType || 'bank',
       contractedHours: contractedHours || null,
-      payRateHourly: payRateHourly || null,
+      // Input is in pounds (matches updateStaff); stored as pence.
+      payRateHourly: payRateHourly ? (Number(payRateHourly) * 100).toString() : null,
       authUserId: userId,
       isActive: true,
     }).returning();
@@ -61,7 +64,7 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       entityType: 'staff',
       entityId: staffMember.id,
-    });
+    }, getClientIp(req));
 
     // Fire webhook staff.added
     await fireWebhook(homeId, 'staff.added', {
