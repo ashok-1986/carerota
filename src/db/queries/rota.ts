@@ -124,8 +124,21 @@ export async function getStaffPatternsForHome(homeId: string) {
     .where(eq(staff.homeId, homeId));
 }
 
-export async function upsertStaffPatterns(patterns: { staffId: string, dayOfWeek: number, shiftCodeId: string | null }[]) {
+export async function upsertStaffPatterns(patterns: { staffId: string, dayOfWeek: number, shiftCodeId: string | null }[], homeId: string) {
   return db.transaction(async (tx) => {
+    // Ensure every targeted staff member belongs to the caller's home so a
+    // manager cannot assign patterns for staff outside their home.
+    const staffIds = patterns.map((p) => p.staffId);
+    if (staffIds.length) {
+      const scoped = await tx
+        .select({ id: staff.id })
+        .from(staff)
+        .where(and(eq(staff.homeId, homeId), inArray(staff.id, staffIds)));
+      if (scoped.length !== new Set(staffIds).size) {
+        throw new Error('Forbidden: One or more staff members are not in your home');
+      }
+    }
+
     for (const pattern of patterns) {
       // Delete existing day pattern for staff
       await tx

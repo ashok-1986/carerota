@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { staff } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { isManager } from '@/lib/authz';
 
 export async function updateStaff(staffId: string, data: {
   name: string;
@@ -20,8 +21,7 @@ export async function updateStaff(staffId: string, data: {
     throw new Error('Unauthorized');
   }
 
-  const allowedRoles = ['home_manager', 'manager', 'admin'];
-  if (!allowedRoles.includes(session.user.role || '')) {
+  if (!isManager(session.user.role)) {
     throw new Error('Forbidden');
   }
 

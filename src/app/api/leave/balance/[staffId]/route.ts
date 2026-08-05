@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { staff } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { getLeaveBalance } from '@/db/queries/leave';
+import { isManager } from '@/lib/authz';
 
 type RouteParams = {
   params: Promise<{
@@ -27,10 +28,9 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { staffId } = await params;
 
     // 2. Authorize: manager/admin or the staff member themselves
-    const allowedRoles = ['home_manager', 'manager', 'admin'];
-    const isManager = allowedRoles.includes(role || '');
+    const isManagerRole = isManager(role);
 
-    if (!isManager) {
+    if (!isManagerRole) {
       // If not manager, must match session user's staff record
       const [staffMember] = await db
         .select()

@@ -9,6 +9,8 @@ import { z } from 'zod';
 import { generatePayrollRows, convertToCsv } from '@/lib/csv';
 import { addMonths, subDays, parseISO, format } from 'date-fns';
 import { insertAuditLog } from '@/db/queries/audit';
+import { getClientIp } from '@/lib/client-ip';
+import { hasRole, PUBLISH_ROLES } from '@/lib/authz';
 
 const exportSchema = z.object({
   start: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
@@ -29,8 +31,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse('Forbidden: Home association missing', { status: 403 });
   }
 
-  const allowedRoles = ['home_manager', 'manager'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!hasRole(role, PUBLISH_ROLES)) {
     return new NextResponse('Forbidden: Only managers can export payroll data', { status: 403 });
   }
 
@@ -105,8 +106,7 @@ export async function POST(req: NextRequest) {
     return new NextResponse('Forbidden: Home association missing', { status: 403 });
   }
 
-  const allowedRoles = ['home_manager', 'manager'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!hasRole(role, PUBLISH_ROLES)) {
     return new NextResponse('Forbidden: Only managers can export payroll data', { status: 403 });
   }
 
@@ -143,6 +143,7 @@ export async function POST(req: NextRequest) {
       entityType: 'home',
       entityId: homeId,
       afterValue: { payPeriodStart, floorIds, rowCount: rows.length },
+      ipAddress: getClientIp(req),
     });
 
     const filename = `softworks-rota-${payPeriodStart}.csv`;

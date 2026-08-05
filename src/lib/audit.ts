@@ -1,7 +1,7 @@
 import { db } from './db';
 import { auditLog } from '@/db/schema';
 
-export async function logAction(action: string, details: Record<string, unknown>) {
+export async function logAction(action: string, details: Record<string, unknown>, ipAddress?: string | null) {
   try {
     await db.insert(auditLog).values({
       homeId: (details.homeId as string) || '',
@@ -11,6 +11,7 @@ export async function logAction(action: string, details: Record<string, unknown>
       entityId: (details.entityId as string) || '',
       beforeValue: details.beforeValue || null,
       afterValue: details.afterValue || null,
+      ipAddress: ipAddress || null,
     });
   } catch (error) {
     console.error('Audit log error:', error);

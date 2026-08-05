@@ -5,6 +5,7 @@ import { rotaEntries, auditLog } from '@/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { fireWebhook } from '@/lib/webhooks';
 import { z } from 'zod';
+import { hasRole, PUBLISH_ROLES } from '@/lib/authz';
 
 const publishSchema = z.object({
   start: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
@@ -27,8 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Verify user role is in the allowed list → 403 if not (manager only)
-  const allowedRoles = ['home_manager', 'manager'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!hasRole(role, PUBLISH_ROLES)) {
     return new NextResponse('Forbidden: Only managers can publish the rota', { status: 403 });
   }
 

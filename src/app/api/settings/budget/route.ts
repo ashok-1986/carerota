@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getHomeById, updateHomeBudget } from '@/db/queries/homes';
 import { insertAuditLog } from '@/db/queries/audit';
+import { getClientIp } from '@/lib/client-ip';
 import { fireWebhook } from '@/lib/webhooks';
 import { z } from 'zod';
 
@@ -86,6 +87,7 @@ export async function PATCH(req: NextRequest) {
       entityId: homeId,
       beforeValue,
       afterValue,
+      ipAddress: getClientIp(req),
     });
 
     await fireWebhook(homeId, 'budget.updated', {

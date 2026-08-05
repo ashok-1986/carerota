@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { homeFloors } from '@/db/schema/floors';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
+import { hasRole, PUBLISH_ROLES } from '@/lib/authz';
 
 const applyPatternSchema = z.object({
   startDate: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid start date" }),
@@ -28,8 +29,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. Manager role only for applying patterns
-  const allowedRoles = ['home_manager', 'manager'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!hasRole(role, PUBLISH_ROLES)) {
     return new NextResponse('Forbidden: Only managers can apply patterns', { status: 403 });
   }
 

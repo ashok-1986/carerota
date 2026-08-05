@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Clock, MapPin, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { LeaveRequestForm } from "@/components/leave/LeaveRequestForm";
+import LeaveRequestForm from "@/components/leave/LeaveRequestForm";
 
 type ShiftRow = {
   id: string;

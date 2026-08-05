@@ -215,7 +215,7 @@ export function detectComplianceIssues(
   return issues;
 }
 
-export async function blockRotaForLeave(requestId: string, homeId: string, reviewedBy: string) {
+export async function blockRotaForLeave(requestId: string, homeId: string, reviewedBy: string, ipAddress?: string | null) {
   const [request] = await db
     .select()
     .from(leaveRequests)
@@ -325,5 +325,5 @@ export async function blockRotaForLeave(requestId: string, homeId: string, revie
     startDate: request.startDate,
     endDate: request.endDate,
     entriesCount: entries.length,
-  });
+  }, ipAddress);
 }

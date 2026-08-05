@@ -6,7 +6,9 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { leaveRequestSchema } from '@/lib/validations';
 import { createLeaveRequest, getLeaveRequests } from '@/db/queries/leave';
 import { logAction } from '@/lib/audit';
+import { getClientIp } from '@/lib/client-ip';
 import { sendLeaveRequestNotification } from '@/lib/email';
+import { isManager } from '@/lib/authz';
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -19,8 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden: Home association missing' }, { status: 403 });
   }
 
-  const allowedRoles = ['home_manager', 'manager', 'admin'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!isManager(role)) {
     return NextResponse.json({ error: 'Forbidden: Invalid role permissions' }, { status: 403 });
   }
 
@@ -65,10 +66,9 @@ export async function POST(req: NextRequest) {
 
     const { staffId, leaveType, startDate, endDate, notes } = result.data;
 
-    const allowedRoles = ['home_manager', 'manager', 'admin'];
-    const isManager = allowedRoles.includes(role || '');
+    const isManagerRole = isManager(role);
 
-    if (isManager) {
+    if (isManagerRole) {
       const [staffMember] = await db
         .select()
         .from(staffTable)
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       leaveType,
       startDate,
       endDate,
-    });
+    }, getClientIp(req));
 
     const [staffInfo] = await db
       .select({ name: staffTable.name })

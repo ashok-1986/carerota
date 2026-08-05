@@ -5,7 +5,7 @@ import { db } from "./db";
 import { staff, homes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { customAdapter } from "./auth-adapter";
-import { rateLimit } from "./rate-limit";
+import { rateLimit, rateLimitShared } from "./rate-limit";
 
 const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut: baseSignOut } = NextAuth({
   adapter: customAdapter(),
@@ -47,26 +47,15 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
           ?? headersObj?.['x-real-ip'] 
           ?? 'unknown';
 
-        const { allowed, retryAfter } = rateLimit(`login:${ip}`, 5, 60_000);
+        const { allowed, retryAfter } = await rateLimitShared(`login:${ip}`, 5, 60_000);
         
         if (!allowed) {
           throw new Error(`Too many login attempts. Try again in ${retryAfter} seconds.`);
         }
 
-        // Hardcoded admin account for testing while email is broken
-        // Replace with DB lookup after Resend domain is verified
-        if (
-          credentials.email === process.env.ADMIN_EMAIL &&
-          credentials.password === process.env.ADMIN_PASSWORD
-        ) {
-          return {
-            id: 'admin-test',
-            email: credentials.email as string,
-            name: 'Maribel Pascual',
-            role: 'manager',
-            homeId: process.env.TEST_HOME_ID ?? '',
-          };
-        }
+        // Fail closed: credentials must be verified against real DB-backed users.
+        // No hardcoded fallback accounts. Password auth is not implemented here;
+        // the primary flow is the email magic link (Resend provider).
         return null;
       },
     }),
@@ -117,50 +106,57 @@ export const auth = async (...args: unknown[]) => {
   const session = await (baseAuth as any)(...args);
   if (session) return session;
 
-  if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test" || !process.env.AUTH_SECRET) {
-    try {
-      const firstHome = await db.select().from(homes).limit(1);
-      if (!firstHome.length) return null;
-      const homeId = firstHome[0].id;
+  // Fail closed. The dev fallback below is STRICTLY opt-in for local development:
+  // it requires NODE_ENV === 'development', an explicit AUTH_DEV_BYPASS=true flag,
+  // AND a configured AUTH_SECRET. It must never run in production or tests, and
+  // must never auto-trigger just because AUTH_SECRET is missing.
+  const devBypassEnabled =
+    process.env.NODE_ENV === 'development' &&
+    process.env.AUTH_DEV_BYPASS === 'true' &&
+    !!process.env.AUTH_SECRET;
 
-      const managerStaff = await db.select().from(staff).where(eq(staff.role, 'home_manager')).limit(1);
-      let staffMember = managerStaff[0];
+  if (!devBypassEnabled) return null;
 
-      if (!staffMember) {
-        const allStaff = await db.select().from(staff).limit(1);
-        if (allStaff.length) {
-          staffMember = allStaff[0];
-        } else {
-          const [newStaff] = await db.insert(staff).values({
-            homeId,
-            name: "Default Manager",
-            role: "home_manager",
-            employmentType: "full_time",
-            contractedHours: "36.00",
-            payRateHourly: "15.00",
-            isActive: true,
-          }).returning();
-          staffMember = newStaff;
-        }
-      }
+  try {
+    const firstHome = await db.select().from(homes).limit(1);
+    if (!firstHome.length) return null;
+    const homeId = firstHome[0].id;
 
-      return {
-        user: {
-          id: staffMember.id,
-          name: staffMember.name,
-          email: "manager@goldcarehomes.com",
+    const managerStaff = await db.select().from(staff).where(eq(staff.role, 'home_manager')).limit(1);
+    let staffMember = managerStaff[0];
+
+    if (!staffMember) {
+      const allStaff = await db.select().from(staff).limit(1);
+      if (allStaff.length) {
+        staffMember = allStaff[0];
+      } else {
+        const [newStaff] = await db.insert(staff).values({
+          homeId,
+          name: "Default Manager",
           role: "home_manager",
-          homeId: staffMember.homeId,
-        },
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      };
-    } catch (e) {
-      console.warn("Auth fallback failed:", e);
-      return null;
+          employmentType: "full_time",
+          contractedHours: "36.00",
+          payRateHourly: "1500", // pence (£15.00/hr) — canonical unit
+          isActive: true,
+        }).returning();
+        staffMember = newStaff;
+      }
     }
-  }
 
-  return null;
+    return {
+      user: {
+        id: staffMember.id,
+        name: staffMember.name,
+        email: "manager@goldcarehomes.com",
+        role: "home_manager",
+        homeId: staffMember.homeId,
+      },
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+  } catch (e) {
+    console.warn("Auth fallback failed:", e);
+    return null;
+  }
 };
 
 export const signIn = baseSignIn;

@@ -5,10 +5,12 @@ import { staff as staffTable, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { updateLeaveStatus } from '@/db/queries/leave';
 import { logAction } from '@/lib/audit';
+import { getClientIp } from '@/lib/client-ip';
 import { sendLeaveApprovalEmail, sendLeaveDeclineEmail } from '@/lib/email';
 import { z } from 'zod';
 import { blockRotaForLeave } from '@/lib/rota';
 import { fireWebhook } from '@/lib/webhooks';
+import { isManager } from '@/lib/authz';
 
 const patchSchema = z.object({
   status: z.enum(['approved', 'declined']),
@@ -32,8 +34,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Forbidden: Home association missing' }, { status: 403 });
   }
 
-  const allowedRoles = ['home_manager', 'manager', 'admin'];
-  if (!allowedRoles.includes(role || '')) {
+  if (!isManager(role)) {
     return NextResponse.json({ error: 'Forbidden: Only managers can review leave' }, { status: 403 });
   }
 
@@ -72,7 +73,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       .limit(1);
 
     if (status === 'approved') {
-      await blockRotaForLeave(requestId, homeId, reviewerId);
+      await blockRotaForLeave(requestId, homeId, reviewerId, getClientIp(req));
 
       if (staffMember?.authUserId) {
         const [userRecord] = await db
@@ -118,7 +119,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       beforeStatus: leaveReq.status,
       afterStatus: status,
       notes: notes || undefined,
-    });
+    }, getClientIp(req));
 
     await fireWebhook(homeId, status === 'approved' ? 'leave.approved' : 'leave.declined', {
       requestId,

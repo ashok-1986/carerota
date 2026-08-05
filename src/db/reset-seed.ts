@@ -32,6 +32,13 @@ function deterministicUUID(seed: string): string {
   return hashToUUID(md5);
 }
 
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 async function main() {
   // ──────────────────────────────────────────────
   // STEP 0: Get home and floor IDs
@@ -149,39 +156,41 @@ async function main() {
   }
 
   const staffDefs: StaffDef[] = [
+    // payRateHourly is stored in PENCE (e.g. "1850" = £18.50) to match the
+    // canonical unit used by the UI, CSV export and cost calculations.
     // ── KING GEORGE FLOOR — 20 staff ──
-    { name: "Dorcas Asante",     role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
-    { name: "Rosemund Owoahene", role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
-    { name: "Priya Sharma",      role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
-    { name: "Michael Nkrumah",   role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "18.50", floorCode: "Kg" },
-    { name: "Abena Owusu",       role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
-    { name: "Akosua Mensah",     role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
-    { name: "Elizabeth Enchill", role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
-    { name: "Rachel Martinez",   role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Kg" },
-    { name: "Comfort Boateng",   role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Emily Davis",       role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Emmanuel Asare",    role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Grace Amponsah",    role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "James Okafor",      role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Joyce Mensah",      role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Mavis Darko",       role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Blessing Adjei",    role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Nisha Patel",       role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Yaa Asante",        role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "12.50", floorCode: "Kg" },
-    { name: "Samuel Boateng",    role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Kg" },
-    { name: "Daniel Acheampong", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "13.00", floorCode: "Kg" },
+    { name: "Dorcas Asante",     role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", floorCode: "Kg" },
+    { name: "Rosemund Owoahene", role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", floorCode: "Kg" },
+    { name: "Priya Sharma",      role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", floorCode: "Kg" },
+    { name: "Michael Nkrumah",   role: "registered_nurse",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1850", floorCode: "Kg" },
+    { name: "Abena Owusu",       role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", floorCode: "Kg" },
+    { name: "Akosua Mensah",     role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", floorCode: "Kg" },
+    { name: "Elizabeth Enchill", role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", floorCode: "Kg" },
+    { name: "Rachel Martinez",   role: "senior_caregiver",  employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", floorCode: "Kg" },
+    { name: "Comfort Boateng",   role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Emily Davis",       role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Emmanuel Asare",    role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Grace Amponsah",    role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "James Okafor",      role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Joyce Mensah",      role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Mavis Darko",       role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Blessing Adjei",    role: "caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Nisha Patel",       role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Yaa Asante",        role: "caregiver", employmentType: "part_time", contractedHours: "22", payRateHourly: "1250", floorCode: "Kg" },
+    { name: "Samuel Boateng",    role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "1300", floorCode: "Kg" },
+    { name: "Daniel Acheampong", role: "caregiver", employmentType: "bank", contractedHours: "0", payRateHourly: "1300", floorCode: "Kg" },
     // ── UNION JACK FLOOR — 5 staff ──
-    { name: "Amara Diallo",      role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Uj" },
-    { name: "Fatima Sesay",      role: "caregiver",       employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Uj" },
-    { name: "Patrick Mensah",    role: "caregiver",       employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Uj" },
-    { name: "Linda Asante",      role: "caregiver",       employmentType: "part_time", contractedHours: "22",   payRateHourly: "12.50", floorCode: "Uj" },
-    { name: "David Osei",        role: "caregiver",       employmentType: "bank",       contractedHours: "0",    payRateHourly: "13.00", floorCode: "Uj" },
+    { name: "Amara Diallo",      role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", floorCode: "Uj" },
+    { name: "Fatima Sesay",      role: "caregiver",       employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Uj" },
+    { name: "Patrick Mensah",    role: "caregiver",       employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Uj" },
+    { name: "Linda Asante",      role: "caregiver",       employmentType: "part_time", contractedHours: "22",   payRateHourly: "1250", floorCode: "Uj" },
+    { name: "David Osei",        role: "caregiver",       employmentType: "bank",       contractedHours: "0",    payRateHourly: "1300", floorCode: "Uj" },
     // ── THAMES FLOOR — 5 staff ──
-    { name: "Sarah Acheampong",  role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "14.50", floorCode: "Th" },
-    { name: "John Boateng",      role: "caregiver",        employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Th" },
-    { name: "Mary Adjei",        role: "caregiver",        employmentType: "full_time", contractedHours: "37.5", payRateHourly: "12.50", floorCode: "Th" },
-    { name: "Robert Mensah",     role: "caregiver",        employmentType: "part_time", contractedHours: "22",   payRateHourly: "12.50", floorCode: "Th" },
-    { name: "Catherine Owusu",   role: "caregiver",        employmentType: "bank",      contractedHours: "0",    payRateHourly: "13.00", floorCode: "Th" },
+    { name: "Sarah Acheampong",  role: "senior_caregiver", employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1450", floorCode: "Th" },
+    { name: "John Boateng",      role: "caregiver",        employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Th" },
+    { name: "Mary Adjei",        role: "caregiver",        employmentType: "full_time", contractedHours: "37.5", payRateHourly: "1250", floorCode: "Th" },
+    { name: "Robert Mensah",     role: "caregiver",        employmentType: "part_time", contractedHours: "22",   payRateHourly: "1250", floorCode: "Th" },
+    { name: "Catherine Owusu",   role: "caregiver",        employmentType: "bank",      contractedHours: "0",    payRateHourly: "1300", floorCode: "Th" },
   ];
 
   const staffIds: string[] = [];
@@ -208,9 +217,15 @@ async function main() {
   const L   = shiftCodeIds["L"];
   const RO  = shiftCodeIds["RO"];
 
-  const periodStart = new Date("2026-05-19");
-  const periodEnd   = new Date("2026-06-18");
-  const rotaMonth   = "2026-05-19";
+  const PAY_PERIOD_START_DAY = 19;
+  const today = new Date();
+  const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), PAY_PERIOD_START_DAY);
+  const periodStart =
+    today.getTime() < currentMonthStart.getTime()
+      ? new Date(today.getFullYear(), today.getMonth() - 1, PAY_PERIOD_START_DAY)
+      : currentMonthStart;
+  const periodEnd = new Date(periodStart.getFullYear(), periodStart.getMonth() + 2, PAY_PERIOD_START_DAY - 1);
+  const rotaMonth = toDateStr(periodStart);
 
   function getDays(start: Date, end: Date): Date[] {
     const days: Date[] = [];
@@ -220,7 +235,7 @@ async function main() {
   }
 
   const allDays = getDays(periodStart, periodEnd);
-  console.log(`  Period: ${periodStart.toISOString().split("T")[0]} to ${periodEnd.toISOString().split("T")[0]} (${allDays.length} days)`);
+  console.log(`  Period: ${toDateStr(periodStart)} to ${toDateStr(periodEnd)} (${allDays.length} days, current + next pay period)`);
 
   const BATCH = 25;
   let totalCount = 0;
@@ -239,7 +254,7 @@ async function main() {
 
     for (const date of allDays) {
       const dow = date.getDay();
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = toDateStr(date);
       let shiftCodeId: string;
 
       if (s.role === "registered_nurse") {

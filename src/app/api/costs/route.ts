@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { additionalCosts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAction } from '@/lib/audit';
+import { getClientIp } from '@/lib/client-ip';
 
 const VALID_CATEGORIES = ['agency', 'inventory', 'maintenance', 'training', 'equipment', 'other'] as const;
 
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
         amount: parsedAmount.toFixed(2),
         rotaMonth,
       },
-    });
+    }, getClientIp(request));
 
     return NextResponse.json({ data: record }, { status: 201 });
   } catch (error) {
@@ -146,7 +147,7 @@ export async function DELETE(request: NextRequest) {
         description: existing[0].description,
         amount: existing[0].amount,
       },
-    });
+    }, getClientIp(request));
 
     return NextResponse.json({ success: true });
   } catch (error) {
