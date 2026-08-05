@@ -40,18 +40,20 @@ export default async function DashboardPage() {
   const allStaff = await getStaffByHome(homeId);
   const rotaEntriesList = await getRotaEntriesForPeriod(homeId, periodStart, periodEnd);
 
-  const isPublished = rotaEntriesList.length > 0 && rotaEntriesList[0].isPublished;
+  const isPublished = rotaEntriesList.length > 0 && rotaEntriesList.every((e) => e.isPublished);
 
-  const budgetCap = Number(home?.budgetCapMonthly ?? 33500);
+  const budgetCap = Number(home?.budgetCapMonthly ?? 72000);
 
   const projectedCostResult = await db.execute(sql<{ total: number }>`
-    SELECT SUM(
-      CAST(${shiftCodes.hours} AS numeric) * CAST(${staff.payRateHourly} AS numeric)
-    ) as total
+    SELECT COALESCE(SUM(
+      CAST(${shiftCodes.hours} AS numeric) * CAST(${staff.payRateHourly} AS numeric) / 100
+    ), 0) as total
     FROM rota_entries re
     JOIN staff ON re.staff_id = staff.id
     JOIN shift_codes ON re.shift_code_id = shift_codes.id
     WHERE re.home_id = ${homeId}
+    AND re.shift_date >= ${periodStart}
+    AND re.shift_date <= ${periodEnd}
     AND re.is_published = true
   `);
   const projectedCostTotal = Number(projectedCostResult.rows[0]?.total ?? 0);

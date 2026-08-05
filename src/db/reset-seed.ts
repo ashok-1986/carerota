@@ -67,6 +67,8 @@ async function main() {
   console.log("  staff_patterns deleted");
   await sql`DELETE FROM leave_requests`;
   console.log("  leave_requests deleted");
+  await sql`DELETE FROM additional_costs`;
+  console.log("  additional_costs deleted");
   await sql`DELETE FROM rota_entries`;
   console.log("  rota_entries deleted");
   await sql`DELETE FROM staff`;
@@ -207,7 +209,7 @@ async function main() {
   console.log(`  ${staffDefs.length} staff inserted.`);
 
   // ──────────────────────────────────────────────
-  // STEP 5: Generate rota entries (31 days)
+  // STEP 5: Generate rota entries (current + next pay period)
   // ──────────────────────────────────────────────
   console.log("\n=== STEP 5: Generating rota entries ===");
 
@@ -295,7 +297,7 @@ async function main() {
           set: { shiftCodeId: drizzleSql`EXCLUDED.shift_code_id`, updatedAt: drizzleSql`NOW()` },
         }).execute();
         totalCount += batch.length;
-        console.log(`    ${totalCount} / ~930 entries written...`);
+        console.log(`    ${totalCount} / ~1860 entries written...`);
         batch = [];
       }
     }
@@ -312,6 +314,63 @@ async function main() {
   console.log(`  ${totalCount} rota entries upserted.`);
 
   // ──────────────────────────────────────────────
+  // STEP 5.5: Seed sample leave requests
+  // ──────────────────────────────────────────────
+  console.log("\n=== STEP 5.5: Seeding sample leave requests ===");
+
+  function addDays(d: Date, days: number): string {
+    const next = new Date(d);
+    next.setDate(next.getDate() + days);
+    return toDateStr(next);
+  }
+
+  const leaveSeeds = [
+    { staffIdx: 8,  leaveType: "AL",   startOffset: 5,  endOffset: 11, status: "pending",  notes: "Family holiday" },
+    { staffIdx: 20, leaveType: "AL",   startOffset: 14, endOffset: 18, status: "pending",  notes: "Annual leave booked" },
+    { staffIdx: 22, leaveType: "sick", startOffset: 3,  endOffset: 4,  status: "approved", notes: "Medical appointment" },
+    { staffIdx: 23, leaveType: "AL",   startOffset: 20, endOffset: 24, status: "approved", notes: "Pre-approved leave" },
+  ];
+  for (const l of leaveSeeds) {
+    await db.insert(schema.leaveRequests).values({
+      id: deterministicUUID(`leave-${l.staffIdx}-${l.leaveType}-${l.startOffset}`),
+      homeId,
+      staffId: staffIds[l.staffIdx],
+      leaveType: l.leaveType,
+      startDate: addDays(periodStart, l.startOffset),
+      endDate: addDays(periodStart, l.endOffset),
+      status: l.status,
+      requestedAt: new Date(),
+      ...(l.status === "approved" ? { reviewedBy: staffIds[0], reviewedAt: new Date() } : {}),
+      notes: l.notes,
+    }).execute();
+  }
+  console.log(`  ${leaveSeeds.length} leave requests seeded (${leaveSeeds.filter(l => l.status === 'pending').length} pending).`);
+
+  // ──────────────────────────────────────────────
+  // STEP 5.6: Seed sample additional costs
+  // ──────────────────────────────────────────────
+  console.log("\n=== STEP 5.6: Seeding sample additional costs ===");
+
+  const costSeeds = [
+    { category: "agency",      description: "Agency nurse cover - night shift", amount: "480.00" },
+    { category: "inventory",   description: "Care supplies restock",            amount: "152.50" },
+    { category: "maintenance", description: "Lift service call-out",            amount: "210.00" },
+    { category: "training",    description: "Manual handling refresher",        amount: "85.00" },
+  ];
+  for (const c of costSeeds) {
+    await db.insert(schema.additionalCosts).values({
+      id: deterministicUUID(`cost-${c.category}-${rotaMonth}`),
+      homeId,
+      rotaMonth,
+      category: c.category,
+      description: c.description,
+      amount: c.amount,
+      addedBy: staffIds[0],
+    }).execute();
+  }
+  console.log(`  ${costSeeds.length} additional costs seeded for ${rotaMonth}.`);
+
+  // ──────────────────────────────────────────────
   // STEP 6: Verification queries
   // ──────────────────────────────────────────────
   console.log("\n=== STEP 6: Verification ===");
@@ -322,7 +381,7 @@ async function main() {
 
   const rotaResult = await sql`SELECT COUNT(*)::int as count FROM rota_entries`;
   console.log(`\n  SELECT COUNT(*) FROM rota_entries;`);
-  console.log(`  Result: ${rotaResult[0].count} (expected: ~930)`);
+  console.log(`  Result: ${rotaResult[0].count} (expected: ~1860)`);
 
   console.log(`\n  Shift code distribution:`);
   const shiftDist = await sql`
