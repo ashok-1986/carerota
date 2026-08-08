@@ -1,8 +1,29 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 
 const ALGO = 'aes-256-gcm';
 const VERSION = 'v1';
 const IV_LENGTH = 12;
+
+const SCRYPT_KEYLEN = 64;
+
+export function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString('base64');
+  const hash = scryptSync(password, salt, SCRYPT_KEYLEN).toString('base64');
+  return `scrypt$${salt}$${hash}`;
+}
+
+export function verifyPassword(password: string, stored: string): boolean {
+  const parts = stored.split('$');
+  if (parts.length !== 3 || parts[0] !== 'scrypt') return false;
+  const [, salt, expectedB64] = parts;
+  try {
+    const expected = Buffer.from(expectedB64, 'base64');
+    const actual = scryptSync(password, salt, SCRYPT_KEYLEN);
+    return actual.length === expected.length && timingSafeEqual(actual, expected);
+  } catch {
+    return false;
+  }
+}
 
 function deriveKey(): Buffer {
   const secret = process.env.AUTH_SECRET;

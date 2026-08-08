@@ -2,10 +2,11 @@ import NextAuth from "next-auth";
 import Resend from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
 import { db } from "./db";
-import { staff, homes } from "@/db/schema";
+import { staff, homes, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { customAdapter } from "./auth-adapter";
 import { rateLimit, rateLimitShared } from "./rate-limit";
+import { verifyPassword } from "./crypto";
 
 const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut: baseSignOut } = NextAuth({
   adapter: customAdapter(),
@@ -53,32 +54,42 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
           throw new Error(`Too many login attempts. Try again in ${retryAfter} seconds.`);
         }
 
-        // Manager sign-in is verified against env-configured admin credentials
-        // (ADMIN_EMAIL / ADMIN_PASSWORD). No hardcoded accounts in source and no
-        // password storage in the DB — the magic-link flow remains the primary
-        // path for staff. Fails closed unless the admin credentials match.
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPassword = process.env.ADMIN_PASSWORD;
-        if (
-          adminEmail &&
-          adminPassword &&
-          String(credentials.email).toLowerCase().trim() === adminEmail.toLowerCase().trim() &&
-          credentials.password === adminPassword
-        ) {
-          let homeId = process.env.TEST_HOME_ID ?? '';
-          if (!homeId) {
-            const [firstHome] = await db.select().from(homes).limit(1);
-            if (firstHome) homeId = firstHome.id;
-          }
-          return {
-            id: 'admin',
-            email: credentials.email as string,
-            name: 'Manager',
-            role: 'home_manager',
-            homeId,
-          };
+        // Manager sign-in is verified against the DB. The user record carries
+        // the scrypt password_hash (never plaintext); role/homeId resolve via
+        // the linked staff row, falling back to home_manager + first home.
+        const email = String(credentials.email).toLowerCase().trim();
+        const password = String(credentials.password);
+        if (!email || !password) return null;
+
+        const [userRow] = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1);
+
+        if (!userRow?.passwordHash || !verifyPassword(password, userRow.passwordHash)) {
+          return null;
         }
-        return null;
+
+        const [staffRow] = await db
+          .select()
+          .from(staff)
+          .where(eq(staff.authUserId, userRow.id))
+          .limit(1);
+
+        let homeId = staffRow?.homeId ?? process.env.TEST_HOME_ID ?? '';
+        if (!homeId) {
+          const [firstHome] = await db.select().from(homes).limit(1);
+          if (firstHome) homeId = firstHome.id;
+        }
+
+        return {
+          id: userRow.id,
+          email: userRow.email,
+          name: userRow.name ?? 'Manager',
+          role: staffRow?.role ?? 'home_manager',
+          homeId,
+        };
       },
     }),
   ],

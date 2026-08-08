@@ -7,6 +7,7 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql as drizzleSql } from "drizzle-orm";
 import * as schema from "./schema";
+import { hashPassword } from "../lib/crypto";
 
 const connectionString = process.env.DATABASE_URL || "";
 if (!connectionString) {
@@ -369,6 +370,26 @@ async function main() {
     }).execute();
   }
   console.log(`  ${costSeeds.length} additional costs seeded for ${rotaMonth}.`);
+
+  // ──────────────────────────────────────────────
+  // STEP 5.7: Seed admin login (user table)
+  // ──────────────────────────────────────────────
+  console.log("\n=== STEP 5.7: Seeding admin login ===");
+
+  const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
+  const adminPassword = process.env.ADMIN_PASSWORD || "";
+  if (!adminEmail || !adminPassword) {
+    console.warn("  ADMIN_EMAIL/ADMIN_PASSWORD not set — skipping admin login seed.");
+  } else {
+    const adminHash = hashPassword(adminPassword);
+    await sql`
+      INSERT INTO "user" (email, name, "emailVerified", password_hash)
+      VALUES (${adminEmail}, 'Manager', NOW(), ${adminHash})
+      ON CONFLICT (email)
+      DO UPDATE SET password_hash = EXCLUDED.password_hash, name = EXCLUDED.name
+    `;
+    console.log(`  Admin login upserted for ${adminEmail}.`);
+  }
 
   // ──────────────────────────────────────────────
   // STEP 6: Verification queries
