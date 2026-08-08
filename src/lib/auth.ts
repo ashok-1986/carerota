@@ -53,9 +53,31 @@ const { handlers: nextAuthHandlers, auth: baseAuth, signIn: baseSignIn, signOut:
           throw new Error(`Too many login attempts. Try again in ${retryAfter} seconds.`);
         }
 
-        // Fail closed: credentials must be verified against real DB-backed users.
-        // No hardcoded fallback accounts. Password auth is not implemented here;
-        // the primary flow is the email magic link (Resend provider).
+        // Manager sign-in is verified against env-configured admin credentials
+        // (ADMIN_EMAIL / ADMIN_PASSWORD). No hardcoded accounts in source and no
+        // password storage in the DB — the magic-link flow remains the primary
+        // path for staff. Fails closed unless the admin credentials match.
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        if (
+          adminEmail &&
+          adminPassword &&
+          String(credentials.email).toLowerCase().trim() === adminEmail.toLowerCase().trim() &&
+          credentials.password === adminPassword
+        ) {
+          let homeId = process.env.TEST_HOME_ID ?? '';
+          if (!homeId) {
+            const [firstHome] = await db.select().from(homes).limit(1);
+            if (firstHome) homeId = firstHome.id;
+          }
+          return {
+            id: 'admin',
+            email: credentials.email as string,
+            name: 'Manager',
+            role: 'home_manager',
+            homeId,
+          };
+        }
         return null;
       },
     }),
