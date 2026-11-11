@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
           eq(rotaEntries.staffId, staffMember.id),
           gte(rotaEntries.shiftDate, start),
           lte(rotaEntries.shiftDate, end),
+          eq(rotaEntries.isPublished, true),
         ),
       )
       .orderBy(rotaEntries.shiftDate);

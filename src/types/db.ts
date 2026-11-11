@@ -36,6 +36,7 @@ export type NewAuditLog = InferInsertModel<typeof auditLog>;
 
 export type StaffRow = {
   id: string;
+  homeId?: string;
   name: string;
   role: string;
   employmentType: string;

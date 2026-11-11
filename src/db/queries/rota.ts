@@ -36,8 +36,9 @@ export type BulkUpsertPayload = {
   createdBy: string;
 };
 
-export async function bulkUpsertEntries(entries: BulkUpsertPayload[]) {
+export async function bulkUpsertEntries(entries: BulkUpsertPayload[], scopedHomeId?: string) {
   if (entries.length === 0) return;
+  const homeId = scopedHomeId ?? entries[0].homeId;
   
   // Note: in Neon / PostgreSQL, ON CONFLICT requires a unique constraint.
   // We need a unique constraint on (staffId, shiftDate) in the DB schema for upsert, 
@@ -49,11 +50,14 @@ export async function bulkUpsertEntries(entries: BulkUpsertPayload[]) {
     const existingRows = await tx.select()
       .from(rotaEntries)
       .where(
-        or(
-          ...entries.map(e => and(
-            eq(rotaEntries.staffId, e.staffId),
-            eq(rotaEntries.shiftDate, e.shiftDate)
-          ))
+        and(
+          eq(rotaEntries.homeId, homeId),
+          or(
+            ...entries.map(e => and(
+              eq(rotaEntries.staffId, e.staffId),
+              eq(rotaEntries.shiftDate, e.shiftDate)
+            ))
+          )
         )
       );
 
@@ -93,7 +97,12 @@ export async function bulkUpsertEntries(entries: BulkUpsertPayload[]) {
     }
 
     if (toDeleteIds.length > 0) {
-      await tx.delete(rotaEntries).where(inArray(rotaEntries.id, toDeleteIds));
+      await tx.delete(rotaEntries).where(
+        and(
+          eq(rotaEntries.homeId, homeId),
+          inArray(rotaEntries.id, toDeleteIds)
+        )
+      );
     }
 
     if (toInsert.length > 0) {
@@ -104,7 +113,12 @@ export async function bulkUpsertEntries(entries: BulkUpsertPayload[]) {
     for (const update of toUpdate) {
        await tx.update(rotaEntries)
          .set({ shiftCodeId: update.shiftCodeId, updatedAt: update.updatedAt })
-         .where(eq(rotaEntries.id, update.id));
+         .where(
+           and(
+             eq(rotaEntries.homeId, homeId),
+             eq(rotaEntries.id, update.id)
+           )
+         );
     }
   });
 }

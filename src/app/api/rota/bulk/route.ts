@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bulkUpsertEntries } from '@/db/queries/rota';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { staff } from '@/db/schema';
 import { homeFloors } from '@/db/schema/floors';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { hasRole, PUBLISH_ROLES } from '@/lib/authz';
 
@@ -64,6 +65,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Verify all staff members belong to that homeId → 403 if not
+    const uniqueStaffIds = Array.from(new Set(updates.map(u => u.staffId)));
+    const validStaff = await db
+      .select({ id: staff.id })
+      .from(staff)
+      .where(and(eq(staff.homeId, homeId), inArray(staff.id, uniqueStaffIds)));
+
+    if (validStaff.length !== uniqueStaffIds.length) {
+      return new NextResponse('Forbidden: One or more staff members do not belong to home', { status: 403 });
+    }
+
     // Map updates to DB shape: force homeId and createdBy from active session user
     const dbUpdates = updates.map(u => ({
       ...u,
@@ -71,7 +83,7 @@ export async function POST(req: NextRequest) {
       createdBy: session.user.id || 'system',
     }));
 
-    await bulkUpsertEntries(dbUpdates);
+    await bulkUpsertEntries(dbUpdates, homeId);
 
     return NextResponse.json({ success: true, count: dbUpdates.length });
   } catch (error) {

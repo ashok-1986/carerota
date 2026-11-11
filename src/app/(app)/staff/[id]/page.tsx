@@ -1,6 +1,7 @@
 import { getStaffById, getStaffRotaEntries } from '@/db/queries/staff';
 import { getFloors } from '@/db/queries/floors';
 import { auth } from '@/lib/auth';
+import { isManager } from '@/lib/authz';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, Clock, MapPin, PoundSterling } from 'lucide-react';
@@ -34,11 +35,17 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
   if (!session?.user?.homeId) notFound();
 
   const [member, floors] = await Promise.all([
-    getStaffById(id),
+    getStaffById(id, session.user.homeId),
     getFloors(session.user.homeId)
   ]);
 
   if (!member) notFound();
+
+  const canManageStaff = isManager(session.user.role);
+  const isOwnProfile = Boolean(
+    member.authUserId && session.user.id && member.authUserId === session.user.id
+  );
+  const canViewPayRate = canManageStaff || isOwnProfile;
 
   const entries = await getStaffRotaEntries(id);
 
@@ -76,7 +83,7 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <EditStaffSheet member={member} floors={floors} />
+                {canManageStaff && <EditStaffSheet member={member} floors={floors} />}
                 <Link
                   href={`/rota?staff=${member.id}`}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-midnight rounded-xl text-sm font-semibold hover:bg-gold/90 transition-colors"
@@ -103,7 +110,11 @@ export default async function StaffProfilePage({ params }: { params: Promise<{ i
                   Hourly Rate
                 </div>
                 <p className="text-lg font-bold text-teal">
-                  {member.payRateHourly != null ? `£${(member.payRateHourly / 100).toFixed(2)}` : '—'}
+                  {canViewPayRate
+                    ? member.payRateHourly != null
+                      ? `£${(member.payRateHourly / 100).toFixed(2)}`
+                      : '—'
+                    : 'Confidential'}
                 </p>
               </div>
               <div className="bg-white/50 rounded-xl p-4 border border-slate/10">

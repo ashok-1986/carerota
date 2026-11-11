@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getStaffByHome } from '@/db/queries/staff';
+import { isManager } from '@/lib/authz';
 
 export async function GET() {
   // 1. Verify session exists
@@ -16,7 +17,12 @@ export async function GET() {
 
   try {
     const staffList = await getStaffByHome(homeId);
-    return NextResponse.json({ data: staffList });
+    const userIsManager = isManager(session.user.role);
+    const sanitizedStaffList = userIsManager
+      ? staffList
+      : staffList.map((s) => ({ ...s, payRateHourly: null }));
+
+    return NextResponse.json({ data: sanitizedStaffList });
   } catch (error) {
     console.error('Error fetching staff in GET /api/staff:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

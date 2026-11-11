@@ -1,13 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  experimental: {
-    serverActions: {
-      allowedOrigins: ['panel.alchemetryx.com'],
-    },
-  },
-  reactCompiler: true,
+  // Optimized for Hostinger Node.js deployment
+  // React compiler and experimental serverActions removed to prevent memory exhaustion and build timeouts
 };
 
 export default nextConfig;

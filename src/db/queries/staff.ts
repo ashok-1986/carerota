@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { staff, homeFloors, rotaEntries, shiftCodes } from '@/db/schema';
-import { eq, asc, desc } from 'drizzle-orm';
+import { eq, and, asc, desc } from 'drizzle-orm';
 import type { StaffRow } from '@/types/db';
 
 /**
@@ -11,6 +11,7 @@ export async function getStaffByHome(homeId: string): Promise<StaffRow[]> {
   const rows = await db
     .select({
       id: staff.id,
+      homeId: staff.homeId,
       name: staff.name,
       role: staff.role,
       employmentType: staff.employmentType,
@@ -35,10 +36,15 @@ export async function getStaffByHome(homeId: string): Promise<StaffRow[]> {
   }));
 }
 
-export async function getStaffById(staffId: string): Promise<StaffRow | null> {
+export async function getStaffById(staffId: string, homeId?: string): Promise<StaffRow | null> {
+  const whereClause = homeId
+    ? and(eq(staff.id, staffId), eq(staff.homeId, homeId))
+    : eq(staff.id, staffId);
+
   const rows = await db
     .select({
       id: staff.id,
+      homeId: staff.homeId,
       name: staff.name,
       role: staff.role,
       employmentType: staff.employmentType,
@@ -52,7 +58,7 @@ export async function getStaffById(staffId: string): Promise<StaffRow | null> {
     })
     .from(staff)
     .leftJoin(homeFloors, eq(staff.homeFloorId, homeFloors.id))
-    .where(eq(staff.id, staffId))
+    .where(whereClause)
     .limit(1);
 
   if (!rows.length) return null;

@@ -5,6 +5,7 @@ import { additionalCosts } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { logAction } from '@/lib/audit';
 import { getClientIp } from '@/lib/client-ip';
+import { isManager } from '@/lib/authz';
 
 const VALID_CATEGORIES = ['agency', 'inventory', 'maintenance', 'training', 'equipment', 'other'] as const;
 
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
 
   const homeId = session.user.homeId as string;
   if (!homeId) return new NextResponse('Forbidden', { status: 403 });
+
+  if (!isManager(session.user.role)) {
+    return new NextResponse('Forbidden: manager role required', { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const rotaMonth = searchParams.get('rotaMonth');
@@ -56,7 +61,7 @@ export async function POST(request: NextRequest) {
   const homeId = session.user.homeId as string;
   if (!homeId) return new NextResponse('Forbidden', { status: 403 });
 
-  if (session.user.role !== 'manager') return new NextResponse('Forbidden: manager role required', { status: 403 });
+  if (!isManager(session.user.role)) return new NextResponse('Forbidden: manager role required', { status: 403 });
 
   try {
     const body = await request.json();
@@ -117,7 +122,7 @@ export async function DELETE(request: NextRequest) {
   const homeId = session.user.homeId as string;
   if (!homeId) return new NextResponse('Forbidden', { status: 403 });
 
-  if (session.user.role !== 'manager') return new NextResponse('Forbidden: manager role required', { status: 403 });
+  if (!isManager(session.user.role)) return new NextResponse('Forbidden: manager role required', { status: 403 });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -135,7 +140,7 @@ export async function DELETE(request: NextRequest) {
       return new NextResponse('Not found or access denied', { status: 404 });
     }
 
-    await db.delete(additionalCosts).where(eq(additionalCosts.id, id));
+    await db.delete(additionalCosts).where(and(eq(additionalCosts.id, id), eq(additionalCosts.homeId, homeId)));
 
     await logAction('cost.entry.removed', {
       homeId,

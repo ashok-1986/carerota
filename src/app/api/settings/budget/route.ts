@@ -5,6 +5,7 @@ import { insertAuditLog } from '@/db/queries/audit';
 import { getClientIp } from '@/lib/client-ip';
 import { fireWebhook } from '@/lib/webhooks';
 import { z } from 'zod';
+import { isManager } from '@/lib/authz';
 
 const patchSchema = z.object({
   budgetCapMonthly: z.number().nullable().optional(),
@@ -15,6 +16,10 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.homeId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!isManager(session.user.role)) {
+    return NextResponse.json({ error: 'Forbidden: manager role required' }, { status: 403 });
   }
 
   try {
@@ -48,7 +53,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden: Home association missing' }, { status: 403 });
   }
 
-  if (role !== 'home_manager') {
+  if (!isManager(role)) {
     return NextResponse.json({ error: 'Forbidden: Only home_manager can update budget' }, { status: 403 });
   }
 
