@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { getStaffByHome } from '@/db/queries/staff';
 import { isManager } from '@/lib/authz';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   // 1. Verify session exists
   const session = await auth();

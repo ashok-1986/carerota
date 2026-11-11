@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { rotaEntries, shiftCodes, staff } from '@/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {

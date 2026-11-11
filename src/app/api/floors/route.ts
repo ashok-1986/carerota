@@ -4,6 +4,8 @@ import { db } from '@/lib/db';
 import { homeFloors } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   // 1. Verify session exists → 401 if not
   const session = await auth();

@@ -9,6 +9,8 @@ import { isManager } from '@/lib/authz';
 
 const VALID_CATEGORIES = ['agency', 'inventory', 'maintenance', 'training', 'equipment', 'other'] as const;
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user) return new NextResponse('Unauthorized', { status: 401 });

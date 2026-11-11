@@ -14,6 +14,8 @@ const querySchema = z.object({
   floorId: z.string().uuid().optional(),
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   // 1. Verify session exists
   const session = await auth();

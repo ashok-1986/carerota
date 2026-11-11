@@ -18,6 +18,8 @@ function stripSecret<T extends { secret?: unknown }>(webhook: T): Omit<T, 'secre
   return rest;
 }
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.homeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

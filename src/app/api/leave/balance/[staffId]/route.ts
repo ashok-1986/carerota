@@ -12,6 +12,8 @@ type RouteParams = {
   }>;
 };
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest, { params }: RouteParams) {
   // 1. Verify session exists
   const session = await auth();

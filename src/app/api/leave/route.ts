@@ -10,6 +10,8 @@ import { getClientIp } from '@/lib/client-ip';
 import { sendLeaveRequestNotification } from '@/lib/email';
 import { isManager } from '@/lib/authz';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {

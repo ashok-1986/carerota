@@ -12,6 +12,8 @@ const patchSchema = z.object({
   budgetNotes: z.string().nullable().optional(),
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.homeId) {

@@ -8,6 +8,8 @@ const querySchema = z.object({
   end: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid end date" }),
 });
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session || !session.user) {

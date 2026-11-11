@@ -6,6 +6,8 @@ import { eq } from 'drizzle-orm';
 import { insertAuditLog } from '@/db/queries/audit';
 import { getClientIp } from '@/lib/client-ip';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.homeId) return new NextResponse('Unauthorized', { status: 401 });

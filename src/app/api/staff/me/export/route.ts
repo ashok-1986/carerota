@@ -6,6 +6,8 @@ import { logAction } from '@/lib/audit'
 import { getClientIp } from '@/lib/client-ip'
 import { NextRequest, NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
